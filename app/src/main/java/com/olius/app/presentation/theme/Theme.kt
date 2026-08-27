@@ -1,6 +1,5 @@
-package com.olius.app.ui.theme
+package com.olius.app.presentation.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
