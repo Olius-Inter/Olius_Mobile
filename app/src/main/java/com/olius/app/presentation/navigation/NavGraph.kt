@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.olius.app.presentation.screen.home.HomeScreen
+import com.olius.app.presentation.screen.main.MainScaffoldScreen
 import com.olius.app.presentation.screen.PerfilType.ForgotPasswordScreen
 import com.olius.app.presentation.screen.PerfilType.PerfilTypeScreen
 import com.olius.app.presentation.splash.MainScreen
@@ -29,7 +29,7 @@ fun NavGraph(
         composable(Routes.PerfilType.route) {
             PerfilTypeScreen(
                 onNavigateHome = {
-                    navController.navigate(Routes.Home.route) {
+                    navController.navigate(Routes.Main.route) {
                         popUpTo(Routes.PerfilType.route) { inclusive = true }
                     }
                 },
@@ -41,8 +41,14 @@ fun NavGraph(
         composable(Routes.ForgotPassword.route) {
             ForgotPasswordScreen(onBack = { navController.popBackStack() })
         }
-        composable(Routes.Home.route) {
-            HomeScreen()
+        composable(Routes.Main.route) {
+            MainScaffoldScreen(
+                onLogout = {
+                    navController.navigate(Routes.PerfilType.route) {
+                        popUpTo(Routes.Main.route) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }
