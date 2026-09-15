@@ -1,6 +1,5 @@
 package com.olius.app.presentation.screen.PerfilType
 
-import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -27,10 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -50,11 +47,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import com.olius.app.R
 import com.olius.app.presentation.theme.OliusAmarelo
 import com.olius.app.presentation.theme.OliusAmareloClaro
 import com.olius.app.presentation.theme.OliusCampoBorda
 import com.olius.app.presentation.theme.OliusCampoFundo
+import com.olius.app.presentation.theme.DecorativeBackground
 import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import kotlinx.coroutines.delay
@@ -75,17 +76,10 @@ private enum class HeaderLayout { CENTERED, TOP }
 // estado centralizado, "Opção_conta" pro estado em linha). Mexa só nessas
 // constantes pra redimensionar; ver markdown pra outras formas de ajustar
 // posição/alinhamento.
-private val HEADER_CENTERED_ICON_SIZE = 220.dp
-private val HEADER_CENTERED_TEXT_SIZE = 90.sp
+private val HEADER_CENTERED_ICON_SIZE = 210.dp
+private val HEADER_CENTERED_TEXT_SIZE = 85.sp
 private val HEADER_ROW_ICON_SIZE = 75.dp
 private val HEADER_ROW_TEXT_SIZE = 42.sp
-
-// Diâmetro das bolinhas decorativas de fundo. O centro de cada uma fica
-// exatamente em cima do canto da tela (ver DecorativeBackground) — como o
-// Brush.radialGradient delas vai do centro (mais forte) até a borda do
-// círculo (transparente), esse diâmetro/2 é o "raio" até onde a cor
-// desvanece: quanto maior, mais a cor se espalha pela tela antes de sumir.
-private val DECORATIVE_BLOB_SIZE = 520.dp
 
 // Altura da linha fluida no card de escolha de tipo. Diminua pra ela ficar
 // menos esticada verticalmente, aumente pra ocupar mais espaço — ver
@@ -105,7 +99,7 @@ private val AUTH_SECONDARY_CARD_HEIGHT = 580.dp
 private val HEADER_TO_CARD_GAP = 16.dp
 
 // Espaço vertical entre um campo de input e o próximo, em Login/Cadastro —
-// bem pequeno de propósito (igual referencia_input.png: quase não tem
+// bem pequeno de propósito (igual ref_input.png: quase não tem
 // espaço entre eles, só a linha embaixo de cada um já separa visualmente).
 private val AUTH_FIELD_SPACING = 2.dp
 
@@ -115,6 +109,7 @@ private val AUTH_FIELD_SPACING = 2.dp
  * cadastro (Função 3). Tudo num arquivo só de propósito — ver o markdown de
  * documentação pra entender o porquê.
  */
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun PerfilTypeScreen(
@@ -329,98 +324,6 @@ private fun OnboardingHeader(
         }
     }
 }
-
-/**
- * Fundo com dois blobs amarelos que trocam de lado (start<->end) em
- * sincronia com o header virando linha. O CENTRO de cada blob fica sempre
- * exatamente em cima de um canto da tela (top-start/top-end pro de cima,
- * bottom-start/bottom-end pro de baixo) — igual referencia_app.png, onde a
- * cor mais forte satura o canto e vai desvanecendo a partir dele.
- *
- * Usa gradient radial (Brush.radialGradient) em vez de "círculo sólido +
- * blur" — o `Modifier.blur()` do Compose só funciona em Android 12+
- * (API 31, via RenderEffect); abaixo disso ele não faz NADA (por isso
- * aumentar o valor do blur não tinha efeito nenhum). O gradient funciona
- * em qualquer versão do Android (é só matemática de cor, sem depender de
- * nenhuma API de renderização) e é o que realmente reproduz o visual
- * suave da referencia_app.png. Em API 31+ ainda soma um blur leve por
- * cima, só de bônus (ver `blurCompat` mais abaixo).
- *
- * Por que BoxWithConstraints + offset em vez de BiasAlignment: com
- * BiasAlignment, bias = ±1 deixa o círculo "encostado" na borda mas com o
- * CENTRO ainda a metade do tamanho dele pra dentro da tela (não no canto de
- * verdade) — pra empurrar o centro até o canto seria preciso um bias bem
- * maior que 1, e o valor certo muda dependendo do tamanho do círculo e da
- * tela (fácil de errar, foi o que causou a inconsistência do round
- * anterior). Calculando o offset manualmente a partir da largura/altura
- * reais da tela (`maxWidth`/`maxHeight`, via BoxWithConstraints), o centro
- * cai exatamente no canto sempre, não importa o tamanho do blob.
- */
-@Composable
-private fun DecorativeBackground(isRow: Boolean, modifier: Modifier = Modifier) {
-    val bias by animateFloatAsState(
-        targetValue = if (isRow) 1f else 0f,
-        animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
-        label = "blobBias"
-    )
-
-    BoxWithConstraints(
-        modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        val half = DECORATIVE_BLOB_SIZE / 2
-        // bias 0 -> centro no canto esquerdo (x=0); bias 1 -> centro no canto direito (x=maxWidth)
-        val topBlobCenterX = lerp(0.dp, maxWidth, bias)
-        val bottomBlobCenterX = lerp(maxWidth, 0.dp, bias)
-
-        // Bolinha de cima: centro sempre em y=0 (borda de cima)
-        GradientBlob(
-            colors = listOf(
-                OliusAmareloClaro.copy(alpha = 0.85f),
-                OliusAmareloClaro.copy(alpha = 0.35f),
-                Color.Transparent
-            ),
-            modifier = Modifier
-                .size(DECORATIVE_BLOB_SIZE)
-                .offset(x = topBlobCenterX - half, y = -half)
-        )
-        // Bolinha de baixo — sempre do lado oposto à de cima; centro em y=maxHeight
-        GradientBlob(
-            colors = listOf(OliusAmareloClaro.copy(alpha = 0.55f), Color.Transparent),
-            modifier = Modifier
-                .size(DECORATIVE_BLOB_SIZE)
-                .offset(x = bottomBlobCenterX - half, y = maxHeight - half)
-        )
-    }
-}
-
-/**
- * Círculo com gradient radial (do centro pras bordas) + blur leve por
- * cima só em API 31+ (`blurCompat`, sem efeito nenhum abaixo disso, então
- * nem tenta — o gradient sozinho já cobre a aparência em qualquer versão).
- */
-@Composable
-private fun GradientBlob(colors: List<Color>, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .clip(CircleShape)
-            .background(Brush.radialGradient(colors))
-            .blurCompat(40.dp)
-    )
-}
-
-/**
- * `.blur()` normal em Android 12+ (API 31, `RenderEffect`); em versões
- * mais antigas o Compose não tem um jeito nativo/leve de fazer blur de
- * verdade (a alternativa seria RenderScript, que está deprecated, ou uma
- * lib externa tipo o Haze — ver seção "Blur nos círculos" no markdown de
- * documentação pra mais detalhes) — então abaixo de 31 simplesmente não
- * aplica nada, e o visual já fica correto só com o gradient acima.
- */
-private fun Modifier.blurCompat(radius: Dp): Modifier =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) this.blur(radius) else this
-
 
 /**
  * Função 2: card de escolha "Sou Estabelecimento" / "Sou Cidadão" +

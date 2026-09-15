@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import com.olius.app.presentation.navigation.NavGraph
 import com.olius.app.presentation.theme.OliusTheme
 
@@ -15,6 +17,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val auth = Firebase.auth
+
+
         setContent {
             OliusTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
