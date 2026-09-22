@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,14 +44,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.rememberLottieComposition
-import com.google.firebase.Firebase
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
 import com.olius.app.R
+import com.olius.app.presentation.auth.requestGoogleIdToken
 import com.olius.app.presentation.theme.OliusAmarelo
 import com.olius.app.presentation.theme.OliusAmareloClaro
 import com.olius.app.presentation.theme.OliusCampoBorda
@@ -59,6 +60,7 @@ import com.olius.app.presentation.theme.DecorativeBackground
 import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -118,6 +120,34 @@ fun PerfilTypeScreen(
     viewModel: PerfilTypeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // LaunchedEffect(Unit): a chave "Unit" nunca muda, então este bloco roda
+    // uma vez quando a tela entra em composição e fica escutando o Flow até
+    // sair de composição — é o jeito recomendado de coletar um Flow de
+    // evento único dentro do Compose (ver AUTH_01, seção 6).
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvents.collect { event ->
+            when (event) {
+                PerfilTypeNavigationEvent.NavigateHome -> onNavigateHome()
+            }
+        }
+    }
+
+    val onGoogleSignInClick: () -> Unit = {
+        coroutineScope.launch {
+            try {
+                val idToken = requestGoogleIdToken(context)
+                viewModel.signInWithGoogleIdToken(idToken)
+            } catch (e: GetCredentialCancellationException) {
+                // Cancelamento não é erro — a pessoa só fechou o seletor de conta.
+                viewModel.onGoogleSignInCancelled()
+            } catch (e: GetCredentialException) {
+                viewModel.onGoogleSignInCancelled()
+            }
+        }
+    }
 
     PerfilTypeContent(
         uiState = uiState,
@@ -133,7 +163,9 @@ fun PerfilTypeScreen(
         onUpdateRegisterPhone = viewModel::updateRegisterPhone,
         onUpdateRegisterPassword = viewModel::updateRegisterPassword,
         onToggleRegisterPasswordVisibility = viewModel::toggleRegisterPasswordVisibility,
-        onNavigateHome = onNavigateHome,
+        onLoginContinue = viewModel::login,
+        onRegisterContinue = viewModel::register,
+        onGoogleSignInClick = onGoogleSignInClick,
         onForgotPassword = onForgotPassword,
         onGoToRegister = viewModel::goToRegister,
         onGoToLogin = viewModel::goToLogin
@@ -156,7 +188,9 @@ private fun PerfilTypeContent(
     onUpdateRegisterPhone: (String) -> Unit,
     onUpdateRegisterPassword: (String) -> Unit,
     onToggleRegisterPasswordVisibility: () -> Unit,
-    onNavigateHome: () -> Unit,
+    onLoginContinue: () -> Unit,
+    onRegisterContinue: () -> Unit,
+    onGoogleSignInClick: () -> Unit,
     onForgotPassword: () -> Unit,
     onGoToRegister: () -> Unit,
     onGoToLogin: () -> Unit
@@ -231,7 +265,8 @@ private fun PerfilTypeContent(
                                     onToggleVisibility = onToggleLoginPasswordVisibility,
                                     onForgotPassword = onForgotPassword,
                                     onGoToRegister = onGoToRegister,
-                                    onContinue = onNavigateHome
+                                    onContinue = onLoginContinue,
+                                    onGoogleSignInClick = onGoogleSignInClick
                                 )
 
                                 OnboardingStep.REGISTER -> RegisterCard(
@@ -244,7 +279,8 @@ private fun PerfilTypeContent(
                                     onToggleVisibility = onToggleRegisterPasswordVisibility,
                                     onForgotPassword = onForgotPassword,
                                     onGoToLogin = onGoToLogin,
-                                    onContinue = onNavigateHome
+                                    onContinue = onRegisterContinue,
+                                    onGoogleSignInClick = onGoogleSignInClick
                                 )
 
                                 OnboardingStep.HEADER_INTRO -> Unit
@@ -507,6 +543,7 @@ private fun LoginCard(
     onForgotPassword: () -> Unit,
     onGoToRegister: () -> Unit,
     onContinue: () -> Unit,
+    onGoogleSignInClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Altura fixa igual ao card de escolha de tipo (AUTH_SECONDARY_CARD_HEIGHT) — pedido.
@@ -557,10 +594,30 @@ private fun LoginCard(
                 .align(Alignment.CenterHorizontally)
                 .clickable(onClick = onForgotPassword)
         )
+        Spacer(Modifier.height(12.dp))
+        AuthErrorMessage(message = uiState.authErrorMessage)
+        Spacer(Modifier.height(8.dp))
+        ContinuarButton(
+            text = if (uiState.isAuthenticating) "Entrando..." else "Entrar",
+            onClick = onContinue,
+            enabled = !uiState.isAuthenticating
+        )
         Spacer(Modifier.height(20.dp))
-        ContinuarButton(text = "Entrar", onClick = onContinue)
-        Spacer(Modifier.height(20.dp))
-        SocialIconsRow()
+        SocialIconsRow(onGoogleClick = onGoogleSignInClick, enabled = !uiState.isAuthenticating)
+    }
+}
+
+/** Mostra a mensagem de erro de autenticação, se houver — ver AUTH_01, seção 5/6. */
+@Composable
+private fun AuthErrorMessage(message: String?, modifier: Modifier = Modifier) {
+    if (message != null) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.error,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier = modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -577,6 +634,7 @@ private fun RegisterCard(
     onForgotPassword: () -> Unit,
     onGoToLogin: () -> Unit,
     onContinue: () -> Unit,
+    onGoogleSignInClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     AuthCardScaffold(modifier = modifier) {
@@ -634,10 +692,16 @@ private fun RegisterCard(
                 .align(Alignment.CenterHorizontally)
                 .clickable(onClick = onForgotPassword)
         )
+        Spacer(Modifier.height(12.dp))
+        AuthErrorMessage(message = uiState.authErrorMessage)
+        Spacer(Modifier.height(8.dp))
+        ContinuarButton(
+            text = if (uiState.isAuthenticating) "Continuando..." else "Continuar",
+            onClick = onContinue,
+            enabled = !uiState.isAuthenticating
+        )
         Spacer(Modifier.height(20.dp))
-        ContinuarButton(text = "Continuar", onClick = onContinue)
-        Spacer(Modifier.height(20.dp))
-        SocialIconsRow()
+        SocialIconsRow(onGoogleClick = onGoogleSignInClick, enabled = !uiState.isAuthenticating)
     }
 }
 
@@ -682,9 +746,15 @@ private fun AuthCardScaffold(
 }
 
 @Composable
-private fun ContinuarButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ContinuarButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp),
@@ -699,14 +769,32 @@ private fun ContinuarButton(text: String, onClick: () -> Unit, modifier: Modifie
     }
 }
 
+/**
+ * Primeiro ícone (Google) já chama [onGoogleClick] de verdade — ver
+ * AUTH_02_LOGIN_GOOGLE.md. Apple/Facebook continuam placeholder até esses
+ * provedores serem implementados.
+ */
 @Composable
-private fun SocialIconsRow(modifier: Modifier = Modifier) {
+private fun SocialIconsRow(
+    onGoogleClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
     ) {
-        repeat(3) {
-            SocialIconPlaceholder(onClick = { /* ver "Trocando os ícones sociais" no markdown */ })
+        SocialIconPlaceholder(
+            contentDescription = "Entrar com o Google",
+            enabled = enabled,
+            onClick = onGoogleClick
+        )
+        repeat(2) {
+            SocialIconPlaceholder(
+                contentDescription = null,
+                enabled = enabled,
+                onClick = { /* Apple/Facebook — ver "Trocando os ícones sociais" no markdown */ }
+            )
         }
     }
 }
@@ -714,21 +802,26 @@ private fun SocialIconsRow(modifier: Modifier = Modifier) {
 /**
  * Placeholder visual pros botões de login social (Google/Apple/Facebook) do
  * design de referência: mesmo fundo/borda da imagem, com R.drawable.arrow
- * no lugar do ícone real. Ver o markdown de documentação pra trocar pela
- * imagem e destino (OAuth) reais de cada provedor.
+ * no lugar do ícone real. Ver AUTH_04_ICONES_DRAWABLE.md pra trocar pelo
+ * ícone oficial do Google (ic_google) quando o arquivo for adicionado.
  */
 @Composable
-private fun SocialIconPlaceholder(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun SocialIconPlaceholder(
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
     Box(
         modifier = modifier
             .size(70.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
             .border(BorderStroke(1.dp, OliusCampoBorda), RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Image(painter = painterResource(R.drawable.arrow), contentDescription = null, modifier = Modifier.size(18.dp))
+        Image(painter = painterResource(R.drawable.arrow), contentDescription = contentDescription, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -879,7 +972,9 @@ private fun PerfilTypeScreenPreview() {
         onUpdateRegisterPhone = {},
         onUpdateRegisterPassword = {},
         onToggleRegisterPasswordVisibility = {},
-        onNavigateHome = {},
+        onLoginContinue = {},
+        onRegisterContinue = {},
+        onGoogleSignInClick = {},
         onForgotPassword = {},
         onGoToRegister = {},
         onGoToLogin = {}

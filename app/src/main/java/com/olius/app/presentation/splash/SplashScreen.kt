@@ -6,17 +6,44 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.rememberLottieAnimatable
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.olius.app.R
+
+/**
+ * Dono do [SplashViewModel]: toca a animação e, quando ela termina, reage ao
+ * [SplashUiState] pra decidir a navegação real — só chega em [onNavigateHome]
+ * quem já tem sessão válida do Firebase; o resto vai pro fluxo de login. Ver
+ * AUTH_01_LOGIN_EMAIL_SENHA.md, seção 9.
+ */
+@Composable
+fun SplashRoute(
+    onNavigateHome: () -> Unit,
+    onNavigatePerfilType: () -> Unit,
+    viewModel: SplashViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            SplashUiState.NavigateHome -> onNavigateHome()
+            SplashUiState.NavigatePerfilType -> onNavigatePerfilType()
+            SplashUiState.Loading -> Unit
+        }
+    }
+
+    MainScreen(onFinished = viewModel::onSplashAnimationFinished)
+}
 
 // Zoom extra sobre a animação (além do Crop). Ajuste aqui se quiser a
 // logo/"Olius" ainda maior ou menor — 1f = tamanho original do Crop.
