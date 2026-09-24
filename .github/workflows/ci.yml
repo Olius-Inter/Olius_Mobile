@@ -36,6 +36,18 @@ jobs:
       - name: Dar permissão ao Gradle Wrapper
         run: chmod +x ./gradlew
 
+      - name: Gerar metadata de verificação
+        run: |
+          ./gradlew clean build \
+            --write-verification-metadata sha256 \
+            --refresh-dependencies
+
+      - name: Upload verification metadata
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: verification-metadata
+          path: gradle/verification-metadata.xml
+
       - name: Build, Test and Sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
