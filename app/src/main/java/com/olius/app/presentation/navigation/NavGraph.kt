@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 import com.olius.app.presentation.screen.main.MainScaffoldScreen
 import com.olius.app.presentation.screen.PerfilType.ForgotPasswordScreen
 import com.olius.app.presentation.screen.PerfilType.PerfilTypeScreen
-import com.olius.app.presentation.splash.MainScreen
+import com.olius.app.presentation.splash.SplashRoute
 
 @Composable
 fun NavGraph(
@@ -18,8 +18,13 @@ fun NavGraph(
         startDestination = Routes.Splash.route
     ) {
         composable(Routes.Splash.route) {
-            MainScreen(
-                onFinished = {
+            SplashRoute(
+                onNavigateHome = {
+                    navController.navigate(Routes.Main.route) {
+                        popUpTo(Routes.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigatePerfilType = {
                     navController.navigate(Routes.PerfilType.route) {
                         popUpTo(Routes.Splash.route) { inclusive = true }
                     }

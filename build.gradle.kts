@@ -10,5 +10,22 @@ sonar {
     properties {
         property("sonar.projectKey", "Olius-Inter_Olius_Mobile")
         property("sonar.organization", "olius-inter")
+        property(
+            "sonar.coverage.jacoco.xmlReportPaths",
+            layout.projectDirectory.file("app/build/reports/coverage/test/debug/report.xml").asFile.absolutePath
+        )
+        // Código de UI (Compose), tema, navegação e a ponte com o Credential
+        // Manager dependem de Activity/Context e não rodam em teste unitário.
+        property(
+            "sonar.coverage.exclusions",
+            listOf(
+                "**/MainActivity.kt",
+                "**/presentation/theme/**",
+                "**/presentation/navigation/**",
+                "**/presentation/auth/GoogleIdentityClient.kt",
+                "**/*Screen.kt",
+                "**/presentation/screen/PerfilType/PerfilType.kt"
+            ).joinToString(",")
+        )
     }
 }

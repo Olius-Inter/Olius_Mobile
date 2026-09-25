@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+google-services.json
+**/serviceAccountKey.json
+**/*-firebase-adminsdk-*.json
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.local

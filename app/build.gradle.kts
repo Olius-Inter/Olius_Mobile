@@ -23,6 +23,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Gera o relatório JaCoCo dos testes unitários
+            // (task createDebugUnitTestCoverageReport), lido pelo Sonar.
+            enableUnitTestCoverage = true
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -56,6 +61,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.firebase.auth)
     implementation(libs.googleid)
+    implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -64,15 +70,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    // implementação do firebase
-    implementation("com.firebaseui:firebase-ui-auth:9.0.0")
-
-    // Required only if Facebook login support is required
-    // Find the latest Facebook SDK releases here: https://goo.gl/Ce5L94
-    // TODO: "8.x" não é uma versão válida (não resolve, quebra o build) — trocar
-    // por um número de versão real antes de habilitar login via Facebook.
-    // implementation("com.facebook.android:facebook-android-sdk:8.x")
-
     // implementação da extensão do lottie
     implementation("com.airbnb.android:lottie-compose:6.4.1")
+
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
 }
