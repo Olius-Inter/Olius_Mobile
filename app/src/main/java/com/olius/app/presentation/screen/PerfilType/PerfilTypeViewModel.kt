@@ -35,7 +35,10 @@ class PerfilTypeViewModel(
     // usecases construídos com um UserRepository fake sem mudar a assinatura.
     private val loginUseCase: LoginUseCase = LoginUseCase(UserRepositoryImpl()),
     private val registerUseCase: RegisterUseCase = RegisterUseCase(UserRepositoryImpl()),
-    private val googleSignInUseCase: GoogleSignInUseCase = GoogleSignInUseCase(UserRepositoryImpl())
+    private val googleSignInUseCase: GoogleSignInUseCase = GoogleSignInUseCase(UserRepositoryImpl()),
+    // `Patterns` vem do android.jar, que nos testes unitários (JVM) é só um
+    // stub (EMAIL_ADDRESS fica null) — por isso a validação é injetável.
+    private val isValidEmail: (String) -> Boolean = { Patterns.EMAIL_ADDRESS.matcher(it).matches() }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PerfilTypeUiState())
@@ -167,7 +170,7 @@ class PerfilTypeViewModel(
 
     private fun validateEmailPassword(email: String, password: String): String? = when {
         email.isBlank() -> "Digite seu e-mail"
-        !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "E-mail inválido"
+        !isValidEmail(email) -> "E-mail inválido"
         password.isBlank() -> "Digite sua senha"
         password.length < 6 -> "A senha precisa ter pelo menos 6 caracteres"
         else -> null
@@ -180,9 +183,10 @@ class PerfilTypeViewModel(
     // seção 5.
     private fun mapAuthError(error: Throwable): String = when (error) {
         is FirebaseAuthInvalidUserException -> "Não encontramos uma conta com esse e-mail"
+        // Antes de InvalidCredentials: WeakPassword é subclasse dela.
+        is FirebaseAuthWeakPasswordException -> "Senha muito fraca — use pelo menos 6 caracteres"
         is FirebaseAuthInvalidCredentialsException -> "E-mail ou senha incorretos"
         is FirebaseAuthUserCollisionException -> "Já existe uma conta com esse e-mail"
-        is FirebaseAuthWeakPasswordException -> "Senha muito fraca — use pelo menos 6 caracteres"
         is FirebaseNetworkException -> "Sem conexão — verifique sua internet"
         else -> "Não foi possível entrar. Tente novamente"
     }

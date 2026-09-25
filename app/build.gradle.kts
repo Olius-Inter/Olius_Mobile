@@ -23,6 +23,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Gera o relatório JaCoCo dos testes unitários
+            // (task createDebugUnitTestCoverageReport), lido pelo Sonar.
+            enableUnitTestCoverage = true
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

@@ -585,26 +585,48 @@ private fun LoginCard(
             visible = uiState.loginPasswordVisible,
             onToggleVisible = onToggleVisibility
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Esqueceu sua senha?",
-            fontSize = 12.sp,
-            color = OliusTextoSecundario,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .clickable(onClick = onForgotPassword)
+        AuthCardFooter(
+            uiState = uiState,
+            buttonText = if (uiState.isAuthenticating) "Entrando..." else "Entrar",
+            onForgotPassword = onForgotPassword,
+            onContinue = onContinue,
+            onGoogleSignInClick = onGoogleSignInClick
         )
-        Spacer(Modifier.height(12.dp))
-        AuthErrorMessage(message = uiState.authErrorMessage)
-        Spacer(Modifier.height(8.dp))
-        ContinuarButton(
-            text = if (uiState.isAuthenticating) "Entrando..." else "Entrar",
-            onClick = onContinue,
-            enabled = !uiState.isAuthenticating
-        )
-        Spacer(Modifier.height(20.dp))
-        SocialIconsRow(onGoogleClick = onGoogleSignInClick, enabled = !uiState.isAuthenticating)
     }
+}
+
+/**
+ * Rodapé comum aos cards de login e cadastro: "Esqueceu sua senha?", mensagem
+ * de erro, botão principal e login social. Precisa estar dentro de uma
+ * Column (usa `align`) — ver [AuthCardScaffold].
+ */
+@Composable
+private fun ColumnScope.AuthCardFooter(
+    uiState: PerfilTypeUiState,
+    buttonText: String,
+    onForgotPassword: () -> Unit,
+    onContinue: () -> Unit,
+    onGoogleSignInClick: () -> Unit
+) {
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "Esqueceu sua senha?",
+        fontSize = 12.sp,
+        color = OliusTextoSecundario,
+        modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .clickable(onClick = onForgotPassword)
+    )
+    Spacer(Modifier.height(12.dp))
+    AuthErrorMessage(message = uiState.authErrorMessage)
+    Spacer(Modifier.height(8.dp))
+    ContinuarButton(
+        text = buttonText,
+        onClick = onContinue,
+        enabled = !uiState.isAuthenticating
+    )
+    Spacer(Modifier.height(20.dp))
+    SocialIconsRow(onGoogleClick = onGoogleSignInClick, enabled = !uiState.isAuthenticating)
 }
 
 /** Mostra a mensagem de erro de autenticação, se houver — ver AUTH_01, seção 5/6. */
@@ -683,25 +705,13 @@ private fun RegisterCard(
             visible = uiState.registerPasswordVisible,
             onToggleVisible = onToggleVisibility
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Esqueceu sua senha?",
-            fontSize = 12.sp,
-            color = OliusTextoSecundario,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .clickable(onClick = onForgotPassword)
+        AuthCardFooter(
+            uiState = uiState,
+            buttonText = if (uiState.isAuthenticating) "Continuando..." else "Continuar",
+            onForgotPassword = onForgotPassword,
+            onContinue = onContinue,
+            onGoogleSignInClick = onGoogleSignInClick
         )
-        Spacer(Modifier.height(12.dp))
-        AuthErrorMessage(message = uiState.authErrorMessage)
-        Spacer(Modifier.height(8.dp))
-        ContinuarButton(
-            text = if (uiState.isAuthenticating) "Continuando..." else "Continuar",
-            onClick = onContinue,
-            enabled = !uiState.isAuthenticating
-        )
-        Spacer(Modifier.height(20.dp))
-        SocialIconsRow(onGoogleClick = onGoogleSignInClick, enabled = !uiState.isAuthenticating)
     }
 }
 
