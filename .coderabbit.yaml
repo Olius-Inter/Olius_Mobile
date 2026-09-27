@@ -1,0 +1,98 @@
+language: "pt-BR"
+
+reviews:
+  profile: "assertive"
+
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_instructions:
+    - path: "app/src/main/java/**/*.kt"
+      instructions: |
+        Revise o código considerando boas práticas de Kotlin e Android.
+        Verifique clareza, legibilidade, null safety, imutabilidade,
+        tratamento de erros, uso adequado de coroutines e separação de responsabilidades.
+        Identifique código duplicado, acoplamento excessivo e lógica de negócio
+        colocada indevidamente na camada de apresentação.
+
+    - path: "app/src/main/java/**/presentation/**/*.kt"
+      instructions: |
+        Revise a camada de apresentação considerando boas práticas de Jetpack Compose.
+        Verifique gerenciamento de estado, recomposição desnecessária,
+        passagem de parâmetros, separação entre UI e lógica de negócio
+        e reutilização adequada de componentes.
+
+    - path: "app/src/main/java/**/screen/**/*.kt"
+      instructions: |
+        Verifique se as telas possuem responsabilidades bem definidas.
+        Identifique lógica de negócio excessiva dentro de Composables,
+        estado duplicado e possíveis problemas de usabilidade ou manutenção.
+
+    - path: "app/src/main/java/**/ViewModel.kt"
+      instructions: |
+        Revise ViewModels considerando gerenciamento de estado,
+        exposição segura de dados para a UI, tratamento de eventos,
+        concorrência e separação da lógica de apresentação.
+
+    - path: "app/src/main/java/**/navigation/**/*.kt"
+      instructions: |
+        Verifique rotas, argumentos de navegação, consistência entre destinos
+        e possibilidade de navegação inválida ou duplicada.
+
+    - path: "app/src/main/java/**/data/**/*.kt"
+      instructions: |
+        Revise a camada de dados considerando abstração de repositórios,
+        tratamento de falhas, acesso a fontes externas e separação
+        entre implementação e domínio.
+
+    - path: "app/src/main/java/**/domain/**/*.kt"
+      instructions: |
+        Revise entidades, interfaces de repositório e casos de uso.
+        Verifique se a camada de domínio permanece independente da UI
+        e de detalhes de infraestrutura.
+
+    - path: "app/src/test/**/*.kt"
+      instructions: |
+        Verifique se os testes cobrem adequadamente o comportamento alterado.
+        Identifique cenários de borda, estados de erro e casos importantes não testados.
+
+    - path: "app/src/androidTest/**/*.kt"
+      instructions: |
+        Analise testes instrumentados considerando navegação,
+        comportamento da interface e integração com componentes Android.
+
+    - path: "app/src/main/res/**"
+      instructions: |
+        Verifique alterações em recursos Android com atenção para nomes,
+        reutilização, acessibilidade, strings hardcoded e consistência visual.
+
+    - path: "app/src/main/AndroidManifest.xml"
+      instructions: |
+        Verifique permissões, activities, services, intent filters
+        e possíveis impactos de segurança ou exposição indevida de componentes.
+
+    - path: "**/build.gradle.kts"
+      instructions: |
+        Analise alterações do Gradle considerando necessidade das dependências,
+        compatibilidade de versões, plugins, configurações de build
+        e possíveis riscos de segurança ou supply chain.
+
+    - path: "gradle/libs.versions.toml"
+      instructions: |
+        Revise alterações de versões e dependências centralizadas.
+        Verifique compatibilidade entre bibliotecas, plugins e versões do Android.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Verifique alterações no CI com atenção para permissões mínimas,
+        uso seguro de secrets, Actions fixadas por SHA,
+        estabilidade do build Android e riscos de supply chain.
+
+chat:
+  auto_reply: true
