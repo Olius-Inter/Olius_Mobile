@@ -34,7 +34,7 @@ reviews:
         Identifique lógica de negócio excessiva dentro de Composables,
         estado duplicado e possíveis problemas de usabilidade ou manutenção.
 
-    - path: "app/src/main/java/**/ViewModel.kt"
+    - path: "app/src/main/java/**/*ViewModel.kt"
       instructions: |
         Revise ViewModels considerando gerenciamento de estado,
         exposição segura de dados para a UI, tratamento de eventos,
