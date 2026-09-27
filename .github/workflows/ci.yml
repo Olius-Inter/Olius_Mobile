@@ -36,7 +36,14 @@ jobs:
       - name: Dar permissão ao Gradle Wrapper
         run: chmod +x ./gradlew
 
+      - name: Recriar google-services.json a partir do secret
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+
+      - name: Build and Test
+        run: ./gradlew clean build
       - name: Build, Test and Sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew clean build sonar --info
+        run: ./gradlew clean build createDebugUnitTestCoverageReport sonar --info

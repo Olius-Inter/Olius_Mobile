@@ -1,6 +1,8 @@
 package com.olius.app.presentation.screen.home
 
 import androidx.lifecycle.ViewModel
+import com.olius.app.data.repository.UserRepositoryImpl
+import com.olius.app.domain.usecases.LogoutUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +17,9 @@ import java.util.Locale
  * uma visualização fiel enquanto a integração com o backend não existe —
  * troque por dados reais (repositório/use case) quando estiverem prontos.
  */
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val logoutUseCase: LogoutUseCase = LogoutUseCase(UserRepositoryImpl())
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
         HomeUiState(
@@ -123,8 +127,13 @@ class HomeViewModel : ViewModel() {
         _uiState.update { it.copy(isProfileSheetOpen = false) }
     }
 
-    /** TODO: chamar LogoutUseCases e navegar de volta pro fluxo de login. */
+    /**
+     * Encerra a sessão do Firebase. A navegação de volta pro fluxo de login
+     * é feita por quem chama (`onLogout()`, repassado desde `NavGraph.kt`),
+     * logo depois desta função — ver `HomeScreen.kt`.
+     */
     fun onLogoutClick() {
+        logoutUseCase()
         _uiState.update { it.copy(isProfileSheetOpen = false) }
     }
 
