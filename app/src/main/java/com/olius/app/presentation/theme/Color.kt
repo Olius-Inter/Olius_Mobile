@@ -44,3 +44,30 @@ val OliusTanqueGotaVazia = Color(0xFFBFBFBF)
 // Fundo escuro dos bottom sheets (Perfil/Notificações) — igual ref_perfil.png / ref_notification.png.
 val OliusSheetFundo = Color(0xFF2B2B2B)
 val OliusSheetTextoSecundario = Color(0xFFB0B0B0)
+// Títulos das telas internas ("Pontos de Coleta", "OlivIA", "Ranking...") —
+// marrom bem escuro, igual ref_map.png / ref_chat.png / ref_ranking.png.
+val OliusTituloMarrom = Color(0xFF3B2A1E)
+
+// Banner "Vire um ponto de Coleta" (ref_map.png) e balão do usuário no chat
+// (ref_chat_message.png).
+val OliusAmareloFundoSuave = Color(0xFFFFF3C4)
+val OliusAmareloBorda = Color(0xFFFFD84D)
+val OliusBalaoUsuario = Color(0xFFFFE9A0)
+val OliusMarromAviso = Color(0xFF7A5300)
+
+// Fundo cinza dos seletores segmentados do ranking e botão escuro do chat.
+val OliusSegmentoFundo = Color(0xFFEDEDED)
+val OliusBotaoEscuro = Color(0xFF2B2B2B)
+
+// Pódio do ranking (ref_ranking.png): borda/avatar do 2º (prata) e do 3º (bronze).
+val OliusPrata = Color(0xFFBDBDBD)
+val OliusAvatarPrataFundo = Color(0xFFBFD7F5)
+val OliusAvatarPrataTexto = Color(0xFF2C5AA0)
+val OliusBronze = Color(0xFFE8836B)
+val OliusLaranjaGradiente = Color(0xFFFFA200)
+
+// Mapa visual (placeholder até o Google Maps — ver MAPA_INTEGRACAO.md).
+val OliusMapaFundo = Color(0xFFEFF0EB)
+val OliusMapaParque = Color(0xFFD4EBC6)
+val OliusMapaAgua = Color(0xFFC9DDF2)
+val OliusMapaAvenida = Color(0xFFFBE7A1)
