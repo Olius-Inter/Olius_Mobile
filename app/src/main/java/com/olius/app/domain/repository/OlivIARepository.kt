@@ -9,6 +9,6 @@ import kotlinx.coroutines.flow.Flow
  * ([com.olius.app.data.repository.MockOlivIARepository]); quando a API
  * multiagente existir, basta uma nova implementação que devolva o mesmo Flow.
  */
-interface OlivIARepository {
+fun interface OlivIARepository {
     fun reply(message: String, attachment: ChatAttachment?): Flow<OlivIAReplyChunk>
 }

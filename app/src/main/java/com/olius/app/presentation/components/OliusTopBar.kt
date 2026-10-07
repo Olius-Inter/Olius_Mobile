@@ -61,9 +61,9 @@ fun OliusTopBar(state: OliusTopBarState, modifier: Modifier = Modifier) {
 }
 
 /**
- * TODO: trocar pelo avatar real do usuário (ex.: Coil + `profileImageUrl`)
- * quando existir integração com o backend. Por enquanto usa um placeholder
- * com ícone, igual referência (círculo amarelo).
+ * Avatar do usuário: placeholder com ícone, igual referência (círculo amarelo).
+ * Ainda não há foto real — `HomeUiState.profileImageUrl` só será preenchido
+ * quando existir integração com o backend; aí a imagem entra aqui (ex.: Coil).
  */
 @Composable
 private fun ProfileAvatar(onClick: () -> Unit, modifier: Modifier = Modifier) {
