@@ -3,6 +3,8 @@ package com.olius.app.presentation
 import com.google.firebase.auth.FirebaseAuth
 import com.olius.app.presentation.screen.PerfilType.PerfilTypeViewModel
 import com.olius.app.presentation.screen.home.HomeViewModel
+import com.olius.app.presentation.screen.ranking.RankingTab
+import com.olius.app.presentation.screen.ranking.RankingViewModel
 import com.olius.app.presentation.splash.SplashUiState
 import com.olius.app.presentation.splash.SplashViewModel
 import io.mockk.every
@@ -46,6 +48,7 @@ class DefaultConstructorsTest {
     fun `HomeViewModel e PerfilTypeViewModel sobem com as dependencias padrao`() {
         HomeViewModel().onLogoutClick()
         PerfilTypeViewModel().onHeaderIntroFinished()
+        RankingViewModel().onTabSelected(RankingTab.ACHIEVEMENTS)
 
         verify { auth.signOut() }
     }
