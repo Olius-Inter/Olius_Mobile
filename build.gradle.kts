@@ -22,6 +22,7 @@ sonar {
                 "**/MainActivity.kt",
                 "**/presentation/theme/**",
                 "**/presentation/navigation/**",
+                "**/presentation/components/**",
                 "**/presentation/auth/GoogleIdentityClient.kt",
                 "**/*Screen.kt",
                 "**/presentation/screen/PerfilType/PerfilType.kt"
