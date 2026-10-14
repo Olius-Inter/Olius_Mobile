@@ -49,7 +49,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.olius.app.R
+import com.olius.app.presentation.components.OliusTopBarState
 import com.olius.app.presentation.screen.home.HomeScreen
+import com.olius.app.presentation.screen.ranking.RankingScreen
 import com.olius.app.presentation.theme.OliusNavBarFundo
 import com.olius.app.presentation.theme.OliusTextoSecundario
 
@@ -57,7 +59,7 @@ import com.olius.app.presentation.theme.OliusTextoSecundario
 enum class BottomNavTab(val route: String, val label: String) {
     HOME("home_tab", "Home"),
     HISTORY("history_tab", "Histórico"),
-    SERVICES("services_tab", "Serviços"),
+    RANKING("ranking_tab", "Ranking"),
     CHAT("chat_tab", "Chat"),
     PIGGY_BANK("piggy_tab", "Cofrinho")
 }
@@ -67,7 +69,7 @@ private data class NavTabIcons(val regular: Int, val selected: Int)
 private val tabIcons = mapOf(
     BottomNavTab.HOME to NavTabIcons(R.drawable.home, R.drawable.home_selected),
     BottomNavTab.HISTORY to NavTabIcons(R.drawable.history, R.drawable.history_selected),
-    BottomNavTab.SERVICES to NavTabIcons(R.drawable.vector, R.drawable.vector_selected),
+    BottomNavTab.RANKING to NavTabIcons(R.drawable.ranking, R.drawable.ranking_selected),
     BottomNavTab.CHAT to NavTabIcons(R.drawable.chat, R.drawable.chat_selected),
     BottomNavTab.PIGGY_BANK to NavTabIcons(R.drawable.pig, R.drawable.pig_selected)
 )
@@ -79,8 +81,8 @@ private const val NAV_BAR_GLASS_BLUR_RADIUS = 28f
 /**
  * Casca do app pós-login: menu inferior fixo (nunca sai da tela, mesmo com
  * popups/bottom sheets abertos por cima do conteúdo — ver HOME_SCREEN.md)
- * + um NavHost próprio pra trocar de aba sem perder o menu. Só a aba Home
- * tem tela de verdade por enquanto; as outras 4 são placeholders "Em breve"
+ * + um NavHost próprio pra trocar de aba sem perder o menu. Home e Ranking
+ * têm tela de verdade; as outras 3 são placeholders "Em breve"
  * (ver [PlaceholderTabScreen]) até existirem.
  *
  * Não usa mais `Scaffold` de propósito: pro efeito de vidro do menu inferior
@@ -113,7 +115,7 @@ fun MainScaffoldScreen(onLogout: () -> Unit) {
         ) {
             composable(BottomNavTab.HOME.route) { HomeScreen(onLogout = onLogout) }
             composable(BottomNavTab.HISTORY.route) { PlaceholderTabScreen(title = "Histórico") }
-            composable(BottomNavTab.SERVICES.route) { PlaceholderTabScreen(title = "Serviços") }
+            composable(BottomNavTab.RANKING.route) { RankingScreen(topBarState = OliusTopBarState()) }
             composable(BottomNavTab.CHAT.route) { PlaceholderTabScreen(title = "Chat") }
             composable(BottomNavTab.PIGGY_BANK.route) { PlaceholderTabScreen(title = "Cofrinho") }
         }
@@ -231,8 +233,8 @@ private fun BottomNavItem(tab: BottomNavTab, selected: Boolean, onClick: () -> U
 }
 
 /**
- * Placeholder pras 4 abas que ainda não têm tela real (Histórico, Serviços,
- * Chat, Cofrinho) — só pra deixar a navegação/menu inferior funcionando de
+ * Placeholder pras 3 abas que ainda não têm tela real (Histórico, Chat,
+ * Cofrinho) — só pra deixar a navegação/menu inferior funcionando de
  * ponta a ponta. Substitua pela tela de verdade quando ela existir.
  */
 @Composable
