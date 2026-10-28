@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exportado do Figma "Olius - Geral" (SVG convertido para VectorDrawable). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="12.76dp"
+    android:height="14.59dp"
+    android:viewportWidth="12.7619"
+    android:viewportHeight="14.5851">
+  <path
+      android:pathData="M6.38096 0.911566L11.8504 6.38096ZM6.38096 0.911566L0.911566 6.38096ZM6.38096 0.911566V13.6735Z"
+      android:fillColor="#737A7B"/>
+  <path
+      android:pathData="M0.911566 6.38096L6.38096 0.911566L11.8504 6.38096M6.38096 0.911566V13.6735"
+      android:strokeColor="#737A7B"
+      android:strokeWidth="1.82313"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"/>
+</vector>
