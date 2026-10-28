@@ -1,5 +1,6 @@
 package com.olius.app.data.remote
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
@@ -17,10 +18,12 @@ class ApiException(val code: Int, message: String) : Exception("HTTP $code: $mes
  *
  * [tokenProvider] devolve o token enviado como `Authorization: Bearer` —
  * hoje a API de ranking não exige, mas o backend principal vai exigir.
+ * [ioDispatcher] é injetável para os testes.
  */
 class ApiClient(
     private val baseUrl: String,
-    private val tokenProvider: suspend () -> String? = { null }
+    private val tokenProvider: suspend () -> String? = { null },
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
 
     suspend fun get(path: String, query: Map<String, String?> = emptyMap()): String =
@@ -36,7 +39,7 @@ class ApiClient(
         body: String?
     ): String {
         val token = tokenProvider()
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             val connection = (URL(buildUrl(path, query)).openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 connectTimeout = ApiConfig.CONNECT_TIMEOUT_MS
@@ -51,9 +54,10 @@ class ApiClient(
                     connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
                 }
                 val code = connection.responseCode
-                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                val success = code in 200..299
+                val stream = if (success) connection.inputStream else connection.errorStream
                 val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-                if (code !in 200..299) throw ApiException(code, text)
+                if (!success) throw ApiException(code, text)
                 text
             } finally {
                 connection.disconnect()

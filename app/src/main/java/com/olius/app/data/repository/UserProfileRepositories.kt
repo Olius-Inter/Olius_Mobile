@@ -11,13 +11,21 @@ import com.olius.app.domain.entity.UserProfile
 import com.olius.app.domain.repository.UserProfileRepository
 import org.json.JSONObject
 
+/** O perfil fica salvo no [store] nas duas versões; só muda de onde ele vem. */
+abstract class StoredUserProfileRepository(protected val store: SessionStore) : UserProfileRepository {
+
+    override fun cachedProfile(): UserProfile? = store.load()
+
+    override fun saveLocal(profile: UserProfile) = store.save(profile)
+
+    override fun clear() = store.clear()
+}
+
 /** Perfil no backend principal. Contrato JSON em API_00_CONEXAO_API.md. */
 class HttpUserProfileRepository(
     private val client: ApiClient,
-    private val store: SessionStore
-) : UserProfileRepository {
-
-    override fun cachedProfile(): UserProfile? = store.load()
+    store: SessionStore
+) : StoredUserProfileRepository(store) {
 
     override suspend fun fetchMyProfile(): Result<UserProfile> = runCatching {
         try {
@@ -37,10 +45,6 @@ class HttpUserProfileRepository(
             .toString()
         parse(JSONObject(client.post(ApiConfig.Main.USERS, body))).also(store::save)
     }
-
-    override fun saveLocal(profile: UserProfile) = store.save(profile)
-
-    override fun clear() = store.clear()
 
     /**
      * Formato do `Profile` da Core (IdentityResponses.Profile). `isCollector`
@@ -62,9 +66,7 @@ class HttpUserProfileRepository(
  * próprio aparelho. Os ids batem com o seed da API Redis (e-01 = ToKonFome,
  * c-01 = Maria Silva) para o ranking destacar "você".
  */
-class MockUserProfileRepository(private val store: SessionStore) : UserProfileRepository {
-
-    override fun cachedProfile(): UserProfile? = store.load()
+class MockUserProfileRepository(store: SessionStore) : StoredUserProfileRepository(store) {
 
     override suspend fun fetchMyProfile(): Result<UserProfile> =
         store.load()?.takeIf { !it.pendingSync }?.let { Result.success(it) }
@@ -83,8 +85,4 @@ class MockUserProfileRepository(private val store: SessionStore) : UserProfileRe
         store.save(profile)
         return Result.success(profile)
     }
-
-    override fun saveLocal(profile: UserProfile) = store.save(profile)
-
-    override fun clear() = store.clear()
 }

@@ -32,9 +32,11 @@ object AppContainer {
         runCatching { FirebaseAuth.getInstance().currentUser?.getIdToken(false)?.await()?.token }.getOrNull()
     }
 
+    private val mainClient by lazy { ApiClient(ApiConfig.MAIN_BASE_URL, firebaseToken) }
+
     val userProfileRepository: UserProfileRepository by lazy {
         if (ApiConfig.USE_MOCK_MAIN_BACKEND) MockUserProfileRepository(sessionStore)
-        else HttpUserProfileRepository(ApiClient(ApiConfig.MAIN_BASE_URL, firebaseToken), sessionStore)
+        else HttpUserProfileRepository(mainClient, sessionStore)
     }
 
     /**
