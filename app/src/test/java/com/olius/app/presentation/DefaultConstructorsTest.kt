@@ -1,10 +1,11 @@
 package com.olius.app.presentation
 
 import com.google.firebase.auth.FirebaseAuth
+import com.olius.app.MainDispatcherRule
 import com.olius.app.presentation.screen.PerfilType.PerfilTypeViewModel
-import com.olius.app.presentation.screen.home.HomeViewModel
 import com.olius.app.presentation.screen.ranking.RankingTab
 import com.olius.app.presentation.screen.ranking.RankingViewModel
+import com.olius.app.presentation.screen.home.HomeViewModel
 import com.olius.app.presentation.splash.SplashUiState
 import com.olius.app.presentation.splash.SplashViewModel
 import io.mockk.every
@@ -15,6 +16,7 @@ import io.mockk.verify
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 /**
@@ -22,6 +24,9 @@ import org.junit.Test
  * usa de verdade), trocando só o `FirebaseAuth.getInstance()` por um mock.
  */
 class DefaultConstructorsTest {
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     private val auth = mockk<FirebaseAuth>(relaxed = true)
 
