@@ -22,8 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olius.app.R
+import com.olius.app.domain.entity.RankingCategory
+import com.olius.app.domain.entity.RankingEntry
 import com.olius.app.presentation.components.BOTTOM_NAV_CONTENT_PADDING
 import com.olius.app.presentation.components.OliusSegmentedControl
 import com.olius.app.presentation.components.OliusTabScaffold
@@ -71,7 +76,7 @@ private fun podiumStyle(position: Int): PodiumStyle = when (position) {
 
 /**
  * Ranking de Recicladores (ref_ranking.png / ref_ranking_2.png / ref_ranking_b2b.png):
- * banner com a posição da pessoa, seletores de categoria e período, abas
+ * banner com a posição da pessoa, seletor de categoria (ranking anual por pontos), abas
  * Competições/Conquistas, pódio e a lista completa.
  */
 @Composable
@@ -93,27 +98,32 @@ fun RankingScreen(topBarState: OliusTopBarState, viewModel: RankingViewModel = v
                 label = { it.label },
                 onSelect = viewModel::onCategorySelected
             )
-            Spacer(Modifier.height(10.dp))
-            OliusSegmentedControl(
-                options = RankingPeriod.entries,
-                selected = state.period,
-                label = { it.label },
-                onSelect = viewModel::onPeriodSelected
-            )
             Spacer(Modifier.height(20.dp))
             RankingTabs(selected = state.tab, onSelect = viewModel::onTabSelected)
             Spacer(Modifier.height(24.dp))
 
             when (state.tab) {
-                RankingTab.COMPETITIONS -> {
-                    Text(state.periodLabel, fontSize = 14.sp, color = OliusTextoSecundario)
-                    Spacer(Modifier.height(16.dp))
-                    Podium(entries = state.podium)
-                    Spacer(Modifier.height(28.dp))
-                    RankingList(entries = state.entries)
+                RankingTab.COMPETITIONS -> when {
+                    state.isLoading && state.entries.isEmpty() -> RankingMessage("Carregando ranking...", loading = true)
+                    state.errorMessage != null -> RankingMessage(
+                        state.errorMessage!!,
+                        "Ops... Estamos com falhas na conexão. Reinicie a página ou entre no aplicativo novamente.",
+                        onRetry = viewModel::onRetry
+                    )
+                    state.entries.isEmpty() -> RankingMessage("Ninguém no ranking ainda", "Os pontos deste ano aparecem aqui.")
+                    else -> {
+                        Text(state.periodLabel, fontSize = 14.sp, color = OliusTextoSecundario)
+                        state.updatedLabel?.let {
+                            Text(it, fontSize = 11.sp, color = OliusTextoSecundario)
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Podium(entries = state.podium)
+                        Spacer(Modifier.height(28.dp))
+                        RankingList(entries = state.entries)
+                    }
                 }
 
-                RankingTab.ACHIEVEMENTS -> AchievementsComingSoon()
+                RankingTab.ACHIEVEMENTS -> AchievementsContent(state, onRetry = viewModel::onRetry)
             }
             Spacer(Modifier.height(BOTTOM_NAV_CONTENT_PADDING))
         }
@@ -144,7 +154,7 @@ private fun RankingBanner(currentUser: RankingEntry?) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
             Text("Ranking de Recicladores", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarrom)
             Spacer(Modifier.height(4.dp))
-            Text("Veja quem está fazendo mais pelo planeta este mês.", fontSize = 12.sp, color = OliusTituloMarrom)
+            Text("Veja quem está fazendo mais pelo planeta este ano.", fontSize = 12.sp, color = OliusTituloMarrom)
             Spacer(Modifier.height(20.dp))
             Row(
                 modifier = Modifier
@@ -156,7 +166,7 @@ private fun RankingBanner(currentUser: RankingEntry?) {
                 Image(painter = painterResource(R.drawable.podio_1), contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    currentUser?.let { "Sua posição: #${it.position} - ${formatLiters(it.liters)}" }
+                    currentUser?.let { "Sua posição: #${it.position} - ${formatPoints(it.points)}" }
                         ?: "Você ainda não pontuou neste ranking",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -214,24 +224,100 @@ private fun RankingTabItem(label: String, iconRes: Int, selected: Boolean, onCli
 
 private val IntrinsicTabWidth: Dp = 120.dp
 
+/** Vazio, carregando ou erro: mesmo bloco centralizado, com "Tentar novamente" opcional. */
 @Composable
-private fun AchievementsComingSoon() {
+private fun RankingMessage(title: String, subtitle: String? = null, loading: Boolean = false, onRetry: (() -> Unit)? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(painter = painterResource(R.drawable.ranking_selected), contentDescription = null, modifier = Modifier.size(48.dp))
+        if (loading) {
+            CircularProgressIndicator(color = OliusAmarelo, modifier = Modifier.size(36.dp))
+        } else {
+            Image(painter = painterResource(R.drawable.ranking_selected), contentDescription = null, modifier = Modifier.size(48.dp))
+        }
         Spacer(Modifier.height(12.dp))
-        Text("Conquistas em breve", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OliusTextoPrimario)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Aqui você vai ver as medalhas que ganhou reciclando.",
-            fontSize = 13.sp,
-            color = OliusTextoSecundario,
-            textAlign = TextAlign.Center
+        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OliusTextoPrimario, textAlign = TextAlign.Center)
+        subtitle?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(it, fontSize = 13.sp, color = OliusTextoSecundario, textAlign = TextAlign.Center)
+        }
+        onRetry?.let {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Tentar novamente",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = OliusAmarelo,
+                modifier = Modifier.clickable(onClick = it).padding(8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AchievementsContent(state: RankingUiState, onRetry: () -> Unit) {
+    val summary = state.achievements
+    when {
+        state.isAchievementsLoading -> RankingMessage("Carregando conquistas...", loading = true)
+        state.achievementsError != null -> RankingMessage(state.achievementsError, onRetry = onRetry)
+        summary == null || summary.achievements.isEmpty() -> RankingMessage(
+            "Conquistas em breve",
+            "Aqui você vai ver as medalhas que ganhou reciclando."
         )
+        else -> Column {
+            val level = summary.level
+            Text(
+                "Nível ${level.level}${level.name?.let { " · $it" } ?: ""}",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = OliusTituloMarrom
+            )
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { level.progress.coerceIn(0f, 1f) },
+                color = OliusAmarelo,
+                trackColor = OliusCampoBorda,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${formatLiters(level.totalLiters)} coletados" +
+                    (level.targetLiters?.takeIf { !level.isMax }?.let { " · meta ${formatLiters(it)}" } ?: ""),
+                fontSize = 12.sp,
+                color = OliusTextoSecundario
+            )
+            Spacer(Modifier.height(20.dp))
+            summary.achievements.forEach { achievement ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp)
+                ) {
+                    Icon(
+                        if (achievement.unlocked) Icons.Outlined.EmojiEvents else Icons.Outlined.Lock,
+                        contentDescription = if (achievement.unlocked) "Desbloqueada" else "Bloqueada",
+                        tint = if (achievement.unlocked) OliusAmarelo else OliusTextoSecundario,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(achievement.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OliusTextoPrimario)
+                        achievement.description?.let {
+                            Text(it, fontSize = 11.sp, color = OliusTextoSecundario, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    Text(formatLiters(achievement.requiredLiters), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OliusAmarelo)
+                }
+                HorizontalDivider(color = OliusCampoBorda)
+            }
+        }
     }
 }
 
@@ -286,7 +372,7 @@ private fun PodiumCard(entry: RankingEntry, modifier: Modifier = Modifier) {
                 )
                 Text(entry.city, fontSize = 10.sp, color = OliusTextoSecundario, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(10.dp))
-                Text(formatLiters(entry.liters), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OliusAmarelo)
+                Text(formatPoints(entry.points), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OliusAmarelo)
             }
         }
         if (entry.isCurrentUser) {
@@ -365,9 +451,11 @@ private fun RankingRow(entry: RankingEntry) {
             Text(entry.name, fontSize = 14.sp, color = OliusTextoPrimario, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(entry.city, fontSize = 11.sp, color = OliusTextoSecundario, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text(formatLiters(entry.liters), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OliusAmarelo)
+        Text(formatPoints(entry.points), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OliusAmarelo)
     }
 }
+
+private fun formatPoints(points: Long): String = "$points pts"
 
 private fun formatLiters(liters: Double): String =
     if (liters % 1.0 == 0.0) "${liters.toInt()}L" else String.format(Locale.US, "%.1fL", liters)
