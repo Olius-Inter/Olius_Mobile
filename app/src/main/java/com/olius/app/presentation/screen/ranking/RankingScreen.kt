@@ -63,6 +63,7 @@ import com.olius.app.presentation.theme.OliusPrata
 import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusTituloMarrom
+import com.olius.app.presentation.theme.OliusSuperficie
 import java.util.Locale
 
 /** Cores de cada lugar do pódio: borda do card, fundo e texto do avatar. */
@@ -350,7 +351,7 @@ private fun PodiumCard(entry: RankingEntry, modifier: Modifier = Modifier) {
                 .padding(top = 8.dp)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = Color.White,
+            color = OliusSuperficie,
             border = BorderStroke(if (isFirst) 2.dp else 1.5.dp, style.border),
             shadowElevation = if (isFirst) 8.dp else 0.dp
         ) {
@@ -413,7 +414,7 @@ private fun RankingList(entries: List<RankingEntry>) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = Color.White,
+        color = OliusSuperficie,
         border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
         Column {

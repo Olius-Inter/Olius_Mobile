@@ -12,15 +12,15 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
+import kotlin.math.roundToInt
 
 // Diâmetro das bolinhas decorativas de fundo. O centro de cada uma fica
 // exatamente em cima do canto da tela (ver DecorativeBackground) — como o
@@ -54,7 +54,10 @@ val DECORATIVE_BLOB_SIZE = 520.dp
  */
 @Composable
 fun DecorativeBackground(isRow: Boolean, modifier: Modifier = Modifier) {
-    val bias by animateFloatAsState(
+    // State (sem `by`): o valor animado só é lido dentro do `offset { }`, na
+    // fase de layout. Assim a troca de lado das bolinhas não recompõe o
+    // BoxWithConstraints a cada quadro — só reposiciona as duas camadas.
+    val bias = animateFloatAsState(
         targetValue = if (isRow) 1f else 0f,
         animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
         label = "blobBias"
@@ -63,14 +66,13 @@ fun DecorativeBackground(isRow: Boolean, modifier: Modifier = Modifier) {
     BoxWithConstraints(
         modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(OliusFundoTela)
     ) {
-        val half = DECORATIVE_BLOB_SIZE / 2
-        // bias 0 -> centro no canto esquerdo (x=0); bias 1 -> centro no canto direito (x=maxWidth)
-        val topBlobCenterX = lerp(0.dp, maxWidth, bias)
-        val bottomBlobCenterX = lerp(maxWidth, 0.dp, bias)
+        val widthPx = constraints.maxWidth
+        val heightPx = constraints.maxHeight
 
-        // Bolinha de cima: centro sempre em y=0 (borda de cima)
+        // Bolinha de cima: centro sempre em y=0 (borda de cima).
+        // bias 0 -> centro no canto esquerdo (x=0); bias 1 -> centro no canto direito (x=maxWidth)
         GradientBlob(
             colors = listOf(
                 OliusAmareloClaro.copy(alpha = 0.85f),
@@ -79,14 +81,20 @@ fun DecorativeBackground(isRow: Boolean, modifier: Modifier = Modifier) {
             ),
             modifier = Modifier
                 .size(DECORATIVE_BLOB_SIZE)
-                .offset(x = topBlobCenterX - half, y = -half)
+                .offset {
+                    val half = (DECORATIVE_BLOB_SIZE / 2).roundToPx()
+                    IntOffset(x = (widthPx * bias.value).roundToInt() - half, y = -half)
+                }
         )
         // Bolinha de baixo — sempre do lado oposto à de cima; centro em y=maxHeight
         GradientBlob(
             colors = listOf(OliusAmareloClaro.copy(alpha = 0.55f), Color.Transparent),
             modifier = Modifier
                 .size(DECORATIVE_BLOB_SIZE)
-                .offset(x = bottomBlobCenterX - half, y = maxHeight - half)
+                .offset {
+                    val half = (DECORATIVE_BLOB_SIZE / 2).roundToPx()
+                    IntOffset(x = (widthPx * (1f - bias.value)).roundToInt() - half, y = heightPx - half)
+                }
         )
     }
 }

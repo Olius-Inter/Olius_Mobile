@@ -19,12 +19,12 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.rememberLottieAnimatable
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.olius.app.R
+import com.olius.app.presentation.theme.OliusFundoTela
 
 /**
  * Dono do [SplashViewModel]: toca a animação e, quando ela termina, reage ao
  * [SplashUiState] pra decidir a navegação real — só chega em [onNavigateHome]
- * quem já tem sessão válida do Firebase; o resto vai pro fluxo de login. Ver
- * AUTH_01_LOGIN_EMAIL_SENHA.md, seção 9.
+ * quem já tem sessão válida da Core; o resto vai pro fluxo de login.
  */
 @Composable
 fun SplashRoute(
@@ -73,7 +73,7 @@ fun MainScreen(onFinished: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(OliusFundoTela),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
