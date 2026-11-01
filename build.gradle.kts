@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.google.gms.google.services) apply false
+    alias(libs.plugins.ksp) apply false
     id("org.sonarqube") version "7.5.0.8588"
 }
 
@@ -25,7 +26,8 @@ sonar {
                 "**/presentation/components/**",
                 "**/presentation/auth/GoogleIdentityClient.kt",
                 "**/*Screen.kt",
-                "**/presentation/screen/PerfilType/PerfilType.kt"
+                "**/presentation/screen/PerfilType/PerfilType.kt",
+                "**/presentation/screen/PerfilType/AccountForm.kt"
             ).joinToString(",")
         )
     }
