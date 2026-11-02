@@ -19,7 +19,7 @@ class MockOlivIARepository(
     private val attachmentDelayMillis: Long = 1_800L
 ) : OlivIARepository {
 
-    override fun reply(message: String, attachment: ChatAttachment?): Flow<OlivIAReplyChunk> = flow {
+    override fun reply(message: String, attachment: ChatAttachment?, conversationId: String?): Flow<OlivIAReplyChunk> = flow {
         val normalized = message.lowercase()
         when {
             attachment != null -> streamText(

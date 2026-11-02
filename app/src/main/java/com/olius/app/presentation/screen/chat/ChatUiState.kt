@@ -35,6 +35,9 @@ data class ChatMessage(
 
         is OlivIAReplyChunk.Attachment ->
             copy(parts = parts.filterNot { it == ChatMessagePart.GeneratingFile } + ChatMessagePart.File(chunk.attachment))
+
+        // O id da conversa não aparece na tela: o ViewModel guarda.
+        is OlivIAReplyChunk.Conversation -> this
     }
 }
 
@@ -43,7 +46,9 @@ data class ChatUiState(
     val input: String = "",
     val pendingAttachment: ChatAttachment? = null,
     val isGenerating: Boolean = false,
-    val isAttachmentMenuOpen: Boolean = false
+    val isAttachmentMenuOpen: Boolean = false,
+    /** Id da conversa no servidor (vem na 1ª resposta e é reenviado nas próximas). */
+    val conversationId: String? = null
 ) {
     val canSend: Boolean
         get() = !isGenerating && (input.isNotBlank() || pendingAttachment != null)

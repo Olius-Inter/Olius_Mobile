@@ -2,10 +2,14 @@ package com.olius.app.presentation.screen.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.olius.app.data.repository.MockOlivIARepository
+import com.olius.app.data.remote.AppContainer
 import com.olius.app.domain.entity.ChatAttachment
+import com.olius.app.domain.entity.OlivIAException
+import com.olius.app.domain.entity.OlivIAReplyChunk
 import com.olius.app.domain.repository.OlivIARepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,13 +18,20 @@ import kotlinx.coroutines.launch
 
 const val INTERRUPTED_REPLY_TEXT = "Resposta interrompida."
 
-/**
- * Chat com a OlivIA (ref_chat.png / ref_chat_message.png / ref_chat_plus.png).
- * As respostas vêm do [OlivIARepository] — hoje o mockado, depois a API
- * multiagente, sem precisar mexer aqui.
- */
+/** Texto que aparece na conversa, no lugar da resposta, quando a OlivIA falha. */
+fun OlivIAException.toChatText(): String = when (this) {
+    is OlivIAException.NotAvailable -> "O assistente ainda não está disponível no servidor."
+    is OlivIAException.Unavailable -> "O assistente está indisponível, tente de novo."
+    is OlivIAException.Timeout -> "A OlivIA demorou demais para responder. Tente de novo."
+    is OlivIAException.Offline -> "Sem conexão com o servidor. Confira sua internet e tente de novo."
+    is OlivIAException.TooManyRequests -> "Muitas mensagens seguidas. Espere um minuto e tente de novo."
+    is OlivIAException.SessionExpired -> "Sua sessão expirou. Entre de novo para conversar com a OlivIA."
+    is OlivIAException.Unknown -> "Não consegui responder agora. Tente de novo."
+}
+
+/** Repositório (mock ou Core) escolhido pela flag `ApiConfig.USE_MOCK_OLIVIA`. */
 class ChatViewModel(
-    private val repository: OlivIARepository = MockOlivIARepository()
+    private val repository: OlivIARepository = AppContainer.olivIARepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -45,7 +56,7 @@ class ChatViewModel(
         send(text, null)
     }
 
-    /** Botão de parar (quadrado) enquanto a OlivIA responde. */
+    /** Botão de parar (quadrado) enquanto a OlivIA responde: cancela a chamada HTTP também. */
     fun onStopGenerating() {
         replyJob?.cancel()
     }
@@ -87,9 +98,20 @@ class ChatViewModel(
 
         replyJob = viewModelScope.launch {
             try {
-                repository.reply(text, attachment).collect { chunk ->
-                    updateMessage(reply.id) { it.append(chunk) }
+                repository.reply(text, attachment, _uiState.value.conversationId).collect { chunk ->
+                    if (chunk is OlivIAReplyChunk.Conversation) {
+                        _uiState.update { it.copy(conversationId = chunk.conversationId) }
+                    } else {
+                        updateMessage(reply.id) { it.append(chunk) }
+                    }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Parou no meio? Fica "Resposta interrompida", não o erro da conexão fechada.
+                ensureActive()
+                val error = e as? OlivIAException ?: OlivIAException.Unknown(e)
+                updateMessage(reply.id) { it.append(OlivIAReplyChunk.Text(error.toChatText())) }
             } finally {
                 finishReply(reply.id)
             }
