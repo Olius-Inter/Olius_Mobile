@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
@@ -138,7 +137,6 @@ fun ProfileScreen(
             ProfileCard {
                 ProfileRow(Icons.Outlined.ContactPage, "Editar informações de perfil", onClick = onEditProfile)
                 ProfileRow(Icons.Outlined.DarkMode, "Tema", value = state.themeMode.label, onClick = viewModel::onThemeClick)
-                ProfileRow(Icons.Outlined.Translate, "Idioma", value = state.language)
                 ProfileRow(
                     Icons.Outlined.Notifications,
                     "Notificações",

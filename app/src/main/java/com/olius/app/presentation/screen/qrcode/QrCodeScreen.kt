@@ -44,6 +44,7 @@ import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.R
 import com.olius.app.presentation.theme.DecorativeBackground
 import com.olius.app.presentation.theme.OliusAmarelo
+import com.olius.app.presentation.theme.OliusFundoTela
 import com.olius.app.presentation.theme.OliusLaranjaVivo
 import com.olius.app.presentation.theme.OliusTituloMarrom
 import com.olius.app.presentation.theme.OliusTituloMarromClaro
@@ -56,7 +57,7 @@ private val StepGray = Color(0xFF636363)
 fun QrCodeScreen(onBack: () -> Unit, viewModel: QrCodeViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
 
-    Box(Modifier.fillMaxSize().background(Color(0xFFFAFAFA))) {
+    Box(Modifier.fillMaxSize().background(OliusFundoTela)) {
         DecorativeBackground(isRow = true)
         Column(
             modifier = Modifier

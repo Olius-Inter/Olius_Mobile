@@ -1,11 +1,16 @@
 package com.olius.app.presentation.screen.becomecollector
 
 import com.olius.app.MainDispatcherRule
+import com.olius.app.data.local.InMemorySessionStore
 import com.olius.app.data.repository.MockCollectionPointRepository
+import com.olius.app.data.repository.MockUserProfileRepository
 import com.olius.app.domain.entity.BecomeCollectorRequest
 import com.olius.app.domain.entity.CepAddress
+import com.olius.app.domain.entity.ProfileType
+import com.olius.app.domain.entity.RegistrationAddress
 import com.olius.app.domain.repository.CepRepository
 import com.olius.app.domain.repository.CollectionPointRepository
+import com.olius.app.domain.repository.UserProfileRepository
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,9 +46,18 @@ class BecomeCollectorViewModelTest {
         }
     }
 
+    /** Perfil com o endereço do cadastro em [address]. */
+    private class FakeProfileRepository(var address: Result<RegistrationAddress?>) :
+        UserProfileRepository by MockUserProfileRepository(InMemorySessionStore()) {
+        override suspend fun fetchMyAddress() = address
+    }
+
+    private val loja = RegistrationAddress("SP", "Osasco", "Centro", "Rua Harmonia", "120", "06010000", "Loja 2")
     private val cep = FakeCepRepository(Result.success(osasco))
     private val points = RecordingRepository()
-    private val viewModel by lazy { BecomeCollectorViewModel(points, cep) }
+    private val profiles = FakeProfileRepository(Result.success(loja))
+    private val viewModel by lazy { BecomeCollectorViewModel(points, cep, profiles, ProfileType.CITIZEN) }
+    private fun establishmentViewModel() = BecomeCollectorViewModel(points, cep, profiles, ProfileType.ESTABLISHMENT)
 
     private fun fillRest() {
         viewModel.onFieldChange(CollectorField.NUMBER, "10")
@@ -156,5 +170,47 @@ class BecomeCollectorViewModelTest {
 
         cep.gate!!.complete(Unit)
         assertEquals(CepStatus.FOUND, viewModel.uiState.value.cepStatus)
+    }
+
+    @Test
+    fun `estabelecimento usa o endereco do cadastro e so informa o horario`() {
+        val vm = establishmentViewModel()
+
+        val state = vm.uiState.value
+        assertTrue(state.isEstablishment)
+        assertEquals(loja, state.establishmentAddress)
+        assertEquals(listOf(CollectorField.OPENING_HOURS), state.visibleFields)
+        assertFalse(state.canSend)
+
+        vm.onFieldChange(CollectorField.OPENING_HOURS, "Seg-Sex 10h - 16h")
+        vm.onSend()
+
+        assertTrue(vm.uiState.value.isSent)
+        assertEquals("06010000", points.sent?.cep)
+        assertEquals("120", points.sent?.number)
+        assertEquals("Loja 2", points.sent?.complement)
+        assertEquals("Seg-Sex 10h - 16h", points.sent?.openingHours)
+        assertTrue(cep.lookups.isEmpty())
+    }
+
+    @Test
+    fun `estabelecimento sem endereco mostra erro e tenta de novo`() {
+        profiles.address = Result.failure(IOException("sem internet"))
+        val vm = establishmentViewModel()
+        vm.onFieldChange(CollectorField.OPENING_HOURS, "Seg-Sex 10h - 16h")
+
+        assertEquals("Não foi possível carregar o endereço do cadastro.", vm.uiState.value.addressError)
+        assertFalse(vm.uiState.value.canSend)
+
+        profiles.address = Result.success(loja)
+        vm.loadEstablishmentAddress()
+        assertNull(vm.uiState.value.addressError)
+        assertTrue(vm.uiState.value.canSend)
+    }
+
+    @Test
+    fun `cidadao continua com o formulario completo`() {
+        assertFalse(viewModel.uiState.value.isEstablishment)
+        assertEquals(CollectorField.entries, viewModel.uiState.value.visibleFields)
     }
 }

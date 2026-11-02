@@ -182,7 +182,7 @@ class MapViewModel(
         _uiState.update { it.copy(isBecomeCollectorDialogOpen = false) }
     }
 
-    /** Diálogo antigo; a tela agora navega direto para "Virando um Coletor" (BecomeCollectorScreen). */
+    /** "Sim" no pop-up do estabelecimento: a tela abre o formulário. */
     fun onConfirmBecomeCollector() {
         _uiState.update { it.copy(isBecomeCollectorDialogOpen = false, showBecomeCollectorBanner = false) }
     }

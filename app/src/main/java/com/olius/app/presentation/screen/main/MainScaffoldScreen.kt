@@ -54,6 +54,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olius.app.presentation.components.OliusTopBarState
 import com.olius.app.data.remote.AppContainer
+import com.olius.app.domain.entity.ProfileType
 import com.olius.app.presentation.screen.becomecollector.BecomeCollectorScreen
 import com.olius.app.presentation.screen.chat.ChatScreen
 import com.olius.app.presentation.screen.history.HistoryScreen
@@ -155,6 +156,7 @@ fun MainScaffoldScreen(
                 MapScreen(
                     topBarState = topBarState,
                     isCollector = homeState.isCollector || AppContainer.isCollector(),
+                    isEstablishment = AppContainer.currentProfileType() == ProfileType.ESTABLISHMENT,
                     onBecomeCollector = { navController.navigate(BECOME_COLLECTOR_ROUTE) }
                 )
             }

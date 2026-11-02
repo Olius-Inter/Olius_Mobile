@@ -25,4 +25,12 @@ class HomeCountFormatTest {
         assertEquals("0.0K", formatCounting(0.0, 625_900.0, compact = true))
         assertEquals("312.9K", formatCounting(312_900.0, 625_900.0, compact = true))
     }
+
+    @Test
+    fun `registrar oleo mostra os numeros no formato brasileiro`() {
+        assertEquals("25.000", formatBr(25_000.0, maxDecimals = 0))
+        assertEquals("62.500", formatBr(62_500.0, maxDecimals = 0))
+        assertEquals("3,04", formatBr(3.0375, maxDecimals = 2))
+        assertEquals("4,05", formatBr(4.05, maxDecimals = 2))
+    }
 }

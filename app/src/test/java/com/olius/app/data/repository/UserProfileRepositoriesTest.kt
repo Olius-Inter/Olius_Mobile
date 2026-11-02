@@ -10,6 +10,7 @@ import com.olius.app.domain.entity.ProfileEditUnavailableException
 import com.olius.app.domain.entity.ProfileNotFoundException
 import com.olius.app.domain.entity.ProfileUpdate
 import com.olius.app.domain.entity.ProfileType
+import com.olius.app.domain.entity.RegistrationAddress
 import com.olius.app.domain.entity.UserProfile
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -50,6 +51,23 @@ class UserProfileRepositoriesTest {
         val fetched = http.fetchMyProfile().getOrThrow()
 
         assertEquals(UserProfile("u-2", "", "", ProfileType.ESTABLISHMENT, isCollector = true), fetched)
+    }
+
+    @Test
+    fun `endereco do cadastro vem do users me e cidadao sem endereco fica nulo`() = runTest {
+        coEvery { client.get(ApiConfig.Main.USERS_ME, any()) } returns """
+            {"id": "u-2", "userType": "ESTABLISHMENT", "address": {"state": "SP", "city": "Osasco",
+             "neighborhood": "Centro", "street": "Rua Harmonia", "number": "120", "cep": "06010000", "complement": null}}
+        """.trimIndent()
+
+        assertEquals(
+            RegistrationAddress("SP", "Osasco", "Centro", "Rua Harmonia", "120", "06010000"),
+            http.fetchMyAddress().getOrThrow()
+        )
+        assertEquals("u-2", http.cachedProfile()?.id)
+
+        coEvery { client.get(ApiConfig.Main.USERS_ME, any()) } returns """{"id": "u-1", "userType": "CITIZENS"}"""
+        assertNull(http.fetchMyAddress().getOrThrow())
     }
 
     @Test

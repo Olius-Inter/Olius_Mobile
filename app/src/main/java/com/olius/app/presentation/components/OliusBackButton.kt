@@ -13,20 +13,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.olius.app.presentation.theme.LocalOliusDarkTheme
 import com.olius.app.presentation.theme.OliusCampoBorda
 import com.olius.app.presentation.theme.OliusTextoPrimarioClaro
 
-/** "Voltar" de todas as telas: círculo branco com a seta para a esquerda (o do Perfil). */
+/** "Voltar" de todas as telas: círculo branco com a seta escura; no tema escuro, só a seta branca. */
 @Composable
 fun OliusBackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    IconButton(
-        onClick = onClick,
-        modifier = modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(Color.White)
-            .border(1.dp, OliusCampoBorda, CircleShape)
-    ) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = OliusTextoPrimarioClaro)
+    val isDark = LocalOliusDarkTheme.current
+    val circle = if (isDark) Modifier else Modifier
+        .clip(CircleShape)
+        .background(Color.White)
+        .border(1.dp, OliusCampoBorda, CircleShape)
+    IconButton(onClick = onClick, modifier = modifier.size(40.dp).then(circle)) {
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Voltar",
+            tint = if (isDark) Color.White else OliusTextoPrimarioClaro
+        )
     }
 }

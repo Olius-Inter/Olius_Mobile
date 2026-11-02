@@ -31,8 +31,6 @@ data class ProfileUiState(
     val themeMode: ThemeMode = ThemeMode.DEFAULT,
     val isThemeDialogOpen: Boolean = false,
     val notificationsEnabled: Boolean = true,
-    /** Só existe português no app: o item aparece, mas não troca. */
-    val language: String = "Português",
     val supportEmail: String = ApiConfig.SUPPORT_EMAIL
 ) {
     /** "Estabelecimento" ou "Cidadão" (users.user_type). */

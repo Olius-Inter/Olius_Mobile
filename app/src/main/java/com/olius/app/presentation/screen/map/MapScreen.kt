@@ -81,6 +81,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -118,6 +119,8 @@ private val WhatsAppGreen = Color(0xFF25D366)
 fun MapScreen(
     topBarState: OliusTopBarState,
     isCollector: Boolean = false,
+    /** Estabelecimento confirma num pop-up antes de abrir o formulário. */
+    isEstablishment: Boolean = false,
     onBecomeCollector: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -131,6 +134,17 @@ fun MapScreen(
     }
     val state by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
+    val startBecomeCollector: () -> Unit = if (isEstablishment) viewModel::onBecomeCollectorClick else onBecomeCollector
+
+    if (state.isBecomeCollectorDialogOpen) {
+        BecomeCollectorDialog(
+            onConfirm = {
+                viewModel.onConfirmBecomeCollector()
+                onBecomeCollector()
+            },
+            onDismiss = viewModel::onDismissBecomeCollectorDialog
+        )
+    }
 
     val locateUser: () -> Unit = {
         scope.launch {
@@ -165,7 +179,7 @@ fun MapScreen(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 BecomeCollectorBanner(
-                    onClick = onBecomeCollector,
+                    onClick = startBecomeCollector,
                     onDismiss = viewModel::onDismissBanner,
                     modifier = Modifier.padding(top = 20.dp)
                 )
@@ -181,7 +195,7 @@ fun MapScreen(
                 onPointClick = viewModel::onPointSelected,
                 onViewportChanged = viewModel::onViewportChanged,
                 onMyLocationClick = onMyLocationClick,
-                onBecomeCollectorClick = onBecomeCollector.takeIf { state.canBecomeCollector }
+                onBecomeCollectorClick = startBecomeCollector.takeIf { state.canBecomeCollector }
             )
             if (MAP_FILTER_TYPES.size > 1) {
                 Spacer(Modifier.height(12.dp))
@@ -254,23 +268,30 @@ private fun BecomeCollectorDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) 
         onDismissRequest = onDismiss,
         containerColor = OliusSuperficie,
         icon = { Icon(Icons.Filled.VolunteerActivism, contentDescription = null, tint = OliusAmarelo) },
-        title = { Text("Vire um ponto de coleta", fontWeight = FontWeight.Bold) },
+        title = {
+            Text(
+                "Deseja virar um ponto de coleta? (PEV)",
+                fontWeight = FontWeight.Bold,
+                color = OliusTextoPrimario,
+                textAlign = TextAlign.Center
+            )
+        },
         text = {
             Text(
-                "Seu endereço aparece no mapa pra quem está por perto e você recebe o óleo usado " +
-                    "da vizinhança. Nós combinamos a retirada quando atingir o mínimo para coleta.",
-                fontSize = 14.sp,
-                color = OliusTextoSecundario
+                "Vamos usar o endereço do seu cadastro. Você só vai precisar informar o horário de funcionamento.",
+                fontSize = 12.sp,
+                color = OliusTextoSecundario,
+                textAlign = TextAlign.Center
             )
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = OliusAmarelo, contentColor = Color.Black)
-            ) { Text("Quero participar", fontWeight = FontWeight.Bold) }
+            ) { Text("Sim", fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Agora não", color = OliusTextoSecundario) }
+            TextButton(onClick = onDismiss) { Text("Não", color = OliusTextoSecundario) }
         }
     )
 }

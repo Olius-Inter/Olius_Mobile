@@ -114,6 +114,7 @@ import com.olius.app.presentation.components.BOTTOM_NAV_CONTENT_PADDING
 import com.olius.app.presentation.components.OliusTabScaffold
 import com.olius.app.presentation.components.OliusTopBarState
 import com.olius.app.presentation.theme.OliusAmarelo
+import com.olius.app.presentation.theme.OliusTextoPrimarioClaro
 import com.olius.app.presentation.theme.OliusBotaoInativoFundo
 import com.olius.app.presentation.theme.OliusBotaoInativoTexto
 import com.olius.app.presentation.theme.OliusCampoBorda
@@ -132,6 +133,7 @@ import com.olius.app.presentation.theme.OliusVerdeSeloTexto
 import com.olius.app.presentation.theme.OliusSuperficie
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -165,7 +167,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(24.dp))
             } else {
                 Spacer(Modifier.height(24.dp))
-                WelcomeSection(userName = state.userName, onQrCodeClick = onOpenQrCode.takeIf { !state.isCollector })
+                WelcomeSection(userName = state.userName, onQrCodeClick = onOpenQrCode.takeIf { state.showQrCode })
                 Spacer(Modifier.height(20.dp))
                 when {
                     state.profileType == ProfileType.CITIZEN -> CitizenHomeContent(
@@ -529,7 +531,7 @@ private fun CollectorRequestsList(
                         modifier = Modifier.weight(1f).height(32.dp),
                         shape = RoundedCornerShape(6.dp),
                         contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = OliusAmarelo, contentColor = OliusTextoCard)
+                        colors = ButtonDefaults.buttonColors(containerColor = OliusAmarelo, contentColor = OliusTextoPrimarioClaro)
                     ) { Text("Coletar", fontSize = 12.sp) }
                     Button(
                         onClick = { onDiscard(request) },
@@ -611,20 +613,20 @@ private fun CitizenBanner(onRegisterOil: (() -> Unit)?) {
             .background(Brush.linearGradient(listOf(OliusAmarelo, OliusLaranjaGradiente)))
             .padding(20.dp)
     ) {
-        Text("Faça a Diferença Hoje!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarrom)
+        Text("Faça a Diferença Hoje!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarromClaro)
         Spacer(Modifier.height(6.dp))
         Text(
             if (onRegisterOil != null) "Registre seu óleo e ajude a preservar milhares de litros de água"
             else "Leve seu óleo usado a um ponto de coleta e ajude a preservar milhares de litros de água",
             fontSize = 12.sp,
-            color = OliusTituloMarrom
+            color = OliusTituloMarromClaro
         )
         if (onRegisterOil == null) return@Column
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onRegisterOil,
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.6f), contentColor = OliusTituloMarrom)
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.6f), contentColor = OliusTituloMarromClaro)
         ) {
             Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
@@ -926,7 +928,7 @@ private fun RegisterOilDialog(
     onDismiss: () -> Unit
 ) {
     CenteredDialog(onDismiss = onDismiss) {
-        Surface(shape = RoundedCornerShape(24.dp), color = Color.White, modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = RoundedCornerShape(24.dp), color = OliusSuperficie, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(24.dp)) {
                 Text(
                     "Registrar Óleo",
@@ -950,12 +952,12 @@ private fun RegisterOilDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(formatThousands(estimatedWaterLiters), color = OliusIconeAgua, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(formatBr(estimatedWaterLiters, maxDecimals = 0), color = OliusIconeAgua, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text("Litros de água preservada", color = OliusTextoSecundario, fontSize = 11.sp)
                     }
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text(formatThousands(estimatedCo2Kg), color = OliusIconeVerde, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("Kg de CO² evitados", color = OliusTextoSecundario, fontSize = 11.sp, textAlign = TextAlign.End)
+                        Text(formatBr(estimatedCo2Kg, maxDecimals = 2), color = OliusIconeVerde, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("kg de CO₂ evitados", color = OliusTextoSecundario, fontSize = 11.sp, textAlign = TextAlign.End)
                     }
                 }
                 Spacer(Modifier.height(20.dp))
@@ -1052,7 +1054,7 @@ private fun RequestPickupDialog(
     onDismiss: () -> Unit
 ) {
     CenteredDialog(onDismiss = onDismiss) {
-        Surface(shape = RoundedCornerShape(24.dp), color = Color.White, modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = RoundedCornerShape(24.dp), color = OliusSuperficie, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(24.dp)) {
                 Box(Modifier.fillMaxWidth()) {
                     Text(
@@ -1337,7 +1339,14 @@ internal fun formatCounting(value: Double, target: Double, compact: Boolean): St
     return String.format(Locale.US, "%.${decimals}f", shown) + if (inThousands) "K" else ""
 }
 
-private fun formatThousands(value: Double): String = String.format(Locale.US, "%.3f", value)
+/** Formato brasileiro: 25000.0 → "25.000", 3.0375 → "3,04". */
+internal fun formatBr(value: Double, maxDecimals: Int): String =
+    NumberFormat.getNumberInstance(PT_BR_LOCALE).apply {
+        maximumFractionDigits = maxDecimals
+        minimumFractionDigits = 0
+    }.format(value)
+
+private val PT_BR_LOCALE: Locale = Locale.forLanguageTag("pt-BR")
 
 @Preview(showBackground = true, heightDp = 900)
 @Composable

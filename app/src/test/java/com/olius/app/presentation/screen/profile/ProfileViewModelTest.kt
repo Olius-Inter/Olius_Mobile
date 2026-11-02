@@ -159,10 +159,9 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `idioma so tem portugues e o contato usa as constantes`() {
+    fun `contato usa as constantes`() {
         val state = viewModel().uiState.value
 
-        assertEquals("Português", state.language)
         assertEquals("oliusjef26@gmail.com", state.supportEmail)
     }
 }

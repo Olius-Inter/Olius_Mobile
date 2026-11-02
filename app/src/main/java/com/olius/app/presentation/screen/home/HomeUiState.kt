@@ -36,7 +36,7 @@ enum class CitizenHomeTab { PEV_POINTS, TIPS }
 
 data class HomeUiState(
     val profileType: ProfileType = ProfileType.ESTABLISHMENT,
-    /** Estabelecimento que também é ponto de coleta: ganha as abas do Coletor. */
+    /** Tem PEV aprovado (estabelecimento ou cidadão). */
     val isCollector: Boolean = false,
     val isOffline: Boolean = false,
 
@@ -87,6 +87,14 @@ data class HomeUiState(
     val notificationFilter: NotificationFilter = NotificationFilter.TODAS,
     val hasUnreadNotifications: Boolean = false
 ) {
+    /** Cidadão que virou PEV: só recebe óleo; não entrega em outro ponto nem pede coleta. */
+    val isCitizenPev: Boolean
+        get() = profileType == ProfileType.CITIZEN && isCollector
+
+    /** QR de identificação: o cidadão mostra ao entregar no PEV; o estabelecimento, ao motorista. */
+    val showQrCode: Boolean
+        get() = !isCitizenPev
+
     /** Fração (0..1) do tanque de óleo preenchida — usada pela animação de "enchendo". */
     val oilTankFraction: Float
         get() = if (minimumForPickupLiters <= 0.0) 0f

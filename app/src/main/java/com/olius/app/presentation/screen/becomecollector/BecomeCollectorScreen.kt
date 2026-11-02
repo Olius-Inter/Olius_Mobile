@@ -79,7 +79,11 @@ fun BecomeCollectorScreen(
                             color = OliusTextoSecundario
                         )
                     } else {
-                        CollectorField.entries.forEach { field ->
+                        if (state.isEstablishment) {
+                            EstablishmentAddress(state, onRetry = viewModel::loadEstablishmentAddress)
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        state.visibleFields.forEach { field ->
                             OutlinedTextField(
                                 value = state.value(field),
                                 onValueChange = { viewModel.onFieldChange(field, it) },
@@ -150,6 +154,46 @@ fun BecomeCollectorScreen(
         }
     }
 }
+
+/** Endereço do cadastro do estabelecimento, só para conferir. */
+@Composable
+private fun EstablishmentAddress(state: BecomeCollectorUiState, onRetry: () -> Unit) {
+    Text("Endereço do ponto", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OliusTextoPrimario)
+    Spacer(Modifier.height(4.dp))
+    val address = state.establishmentAddress
+    when {
+        state.isLoadingAddress -> Text("Carregando endereço...", fontSize = 13.sp, color = OliusTextoSecundario)
+        address != null -> {
+            Text(
+                listOfNotNull("${address.street}, ${address.number}", address.complement?.takeIf { it.isNotBlank() })
+                    .joinToString(" - "),
+                fontSize = 14.sp,
+                color = OliusTextoPrimario
+            )
+            Text(
+                "${address.neighborhood}, ${address.city} - ${address.state} · CEP ${formatCep(address.cep)}",
+                fontSize = 13.sp,
+                color = OliusTextoSecundario
+            )
+            Spacer(Modifier.height(4.dp))
+            Text("É o endereço do seu cadastro.", fontSize = 12.sp, color = OliusTextoSecundario)
+        }
+        else -> Column {
+            Text(state.addressError.orEmpty(), fontSize = 12.sp, color = OliusVermelhoFechado)
+            Text(
+                "Tentar de novo",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = OliusTextoPrimario,
+                modifier = Modifier
+                    .clickable(onClick = onRetry)
+                    .padding(vertical = 4.dp)
+            )
+        }
+    }
+}
+
+private fun formatCep(cep: String) = if (cep.length == 8) "${cep.take(5)}-${cep.drop(5)}" else cep
 
 /** Aviso embaixo do CEP. */
 @Composable

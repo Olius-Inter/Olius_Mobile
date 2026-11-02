@@ -3,6 +3,7 @@ package com.olius.app.domain.usecases
 import com.olius.app.domain.entity.AccountRegistration
 import com.olius.app.domain.entity.ProfileType
 import com.olius.app.domain.entity.ProfileUpdate
+import com.olius.app.domain.entity.RegistrationAddress
 import com.olius.app.domain.entity.UserProfile
 import com.olius.app.domain.repository.FakeUserRepository
 import com.olius.app.domain.repository.UserProfileRepository
@@ -92,6 +93,7 @@ class AuthUseCasesTest {
             override fun cachedProfile() = cached
             override suspend fun fetchMyProfile() = remote
             override suspend fun updateMyProfile(update: ProfileUpdate) = Result.failure<UserProfile>(IOException())
+            override suspend fun fetchMyAddress() = Result.success<RegistrationAddress?>(null)
             override suspend fun fetchCollectorStatus() = Result.success(false)
             override fun saveLocal(profile: UserProfile) { cached = profile }
             override fun clear() { cached = null }

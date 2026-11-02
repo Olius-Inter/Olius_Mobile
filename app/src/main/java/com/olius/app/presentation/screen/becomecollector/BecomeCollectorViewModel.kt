@@ -6,8 +6,11 @@ import com.olius.app.data.remote.AppContainer
 import com.olius.app.domain.entity.BecomeCollectorRequest
 import com.olius.app.domain.entity.CepAddress
 import com.olius.app.domain.entity.PevAlreadyExistsException
+import com.olius.app.domain.entity.ProfileType
+import com.olius.app.domain.entity.RegistrationAddress
 import com.olius.app.domain.repository.CepRepository
 import com.olius.app.domain.repository.CollectionPointRepository
+import com.olius.app.domain.repository.UserProfileRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +33,11 @@ enum class CollectorField(val label: String, val required: Boolean = true) {
 enum class CepStatus { IDLE, LOADING, FOUND, NOT_FOUND, NETWORK_ERROR }
 
 data class BecomeCollectorUiState(
+    /** Estabelecimento usa o endereço do cadastro e só informa o horário. */
+    val isEstablishment: Boolean = false,
+    val establishmentAddress: RegistrationAddress? = null,
+    val isLoadingAddress: Boolean = false,
+    val addressError: String? = null,
     val values: Map<CollectorField, String> = emptyMap(),
     /** UF escondida, preenchida pelo CEP; a Core exige `state` [A-Z]{2}. */
     val state: String = "",
@@ -50,21 +58,51 @@ data class BecomeCollectorUiState(
             else -> null
         }
 
+    /** Campos que aparecem na tela. */
+    val visibleFields: List<CollectorField>
+        get() = if (isEstablishment) listOf(CollectorField.OPENING_HOURS) else CollectorField.entries
+
     val canSend: Boolean
-        get() = !isSending &&
+        get() = !isSending && if (isEstablishment) {
+            establishmentAddress != null && value(CollectorField.OPENING_HOURS).isNotBlank()
+        } else {
             cepStatus == CepStatus.FOUND && state.length == 2 &&
-            CollectorField.entries.filter { it.required }.all { value(it).isNotBlank() }
+                CollectorField.entries.filter { it.required }.all { value(it).isNotBlank() }
+        }
 }
 
 /** "Virando um Coletor". */
 class BecomeCollectorViewModel(
     private val repository: CollectionPointRepository = AppContainer.collectionPointRepository,
-    private val cepRepository: CepRepository = AppContainer.cepRepository
+    private val cepRepository: CepRepository = AppContainer.cepRepository,
+    private val profileRepository: UserProfileRepository = AppContainer.userProfileRepository,
+    profileType: ProfileType = AppContainer.currentProfileType()
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(BecomeCollectorUiState())
+    private val _uiState = MutableStateFlow(
+        BecomeCollectorUiState(isEstablishment = profileType == ProfileType.ESTABLISHMENT)
+    )
     val uiState: StateFlow<BecomeCollectorUiState> = _uiState.asStateFlow()
 
     private var cepJob: Job? = null
+
+    init {
+        if (_uiState.value.isEstablishment) loadEstablishmentAddress()
+    }
+
+    /** Endereço do cadastro do estabelecimento. */
+    fun loadEstablishmentAddress() {
+        _uiState.update { it.copy(isLoadingAddress = true, addressError = null) }
+        viewModelScope.launch {
+            val address = profileRepository.fetchMyAddress().getOrNull()
+            _uiState.update {
+                it.copy(
+                    establishmentAddress = address,
+                    isLoadingAddress = false,
+                    addressError = if (address == null) "Não foi possível carregar o endereço do cadastro." else null
+                )
+            }
+        }
+    }
 
     fun onFieldChange(field: CollectorField, value: String) {
         if (field == CollectorField.CEP) return onCepChange(value)
@@ -123,7 +161,17 @@ class BecomeCollectorViewModel(
     fun onSend() {
         val state = _uiState.value
         if (!state.canSend) return
-        val request = BecomeCollectorRequest(
+        val address = state.establishmentAddress
+        val request = if (state.isEstablishment && address != null) BecomeCollectorRequest(
+            cep = address.cep,
+            street = address.street,
+            number = address.number,
+            neighborhood = address.neighborhood,
+            city = address.city,
+            state = address.state,
+            complement = address.complement,
+            openingHours = state.value(CollectorField.OPENING_HOURS).trim()
+        ) else BecomeCollectorRequest(
             cep = state.value(CollectorField.CEP),
             street = state.value(CollectorField.STREET).trim(),
             number = state.value(CollectorField.NUMBER).trim(),

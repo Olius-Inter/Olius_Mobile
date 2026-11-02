@@ -53,6 +53,7 @@ import com.olius.app.presentation.components.OliusSegmentedControl
 import com.olius.app.presentation.components.OliusTabScaffold
 import com.olius.app.presentation.components.OliusTopBarState
 import com.olius.app.presentation.theme.OliusAmarelo
+import com.olius.app.presentation.theme.OliusTituloMarromClaro
 import com.olius.app.presentation.theme.OliusAmareloClaro
 import com.olius.app.presentation.theme.OliusAvatarPrataFundo
 import com.olius.app.presentation.theme.OliusAvatarPrataTexto
@@ -145,9 +146,9 @@ private fun RankingBanner(currentUser: RankingEntry?) {
                 .size(150.dp)
         )
         Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
-            Text("Ranking de Recicladores", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarrom)
+            Text("Ranking de Recicladores", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarromClaro)
             Spacer(Modifier.height(4.dp))
-            Text("Veja quem está fazendo mais pelo planeta este ano.", fontSize = 12.sp, color = OliusTituloMarrom)
+            Text("Veja quem está fazendo mais pelo planeta este ano.", fontSize = 12.sp, color = OliusTituloMarromClaro)
             Spacer(Modifier.height(20.dp))
             Row(
                 modifier = Modifier
@@ -163,7 +164,7 @@ private fun RankingBanner(currentUser: RankingEntry?) {
                         ?: "Você ainda não pontuou neste ranking",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = OliusTituloMarrom
+                    color = OliusTituloMarromClaro
                 )
             }
         }
@@ -364,7 +365,7 @@ private fun PodiumCard(entry: RankingEntry, modifier: Modifier = Modifier) {
                 "Você",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = OliusTituloMarrom,
+                color = OliusTituloMarromClaro,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(OliusAmarelo)

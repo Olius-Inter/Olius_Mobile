@@ -128,8 +128,10 @@ class HomeViewModel(
     private fun canUseOilActions(state: HomeUiState): Boolean =
         state.profileType == ProfileType.ESTABLISHMENT || state.isCollector
 
+    /** Só estabelecimento pede coleta; o PEV de cidadão só recebe. */
     fun canRequestPickup(state: HomeUiState = _uiState.value): Boolean =
-        canUseOilActions(state) && hasRegisteredOilThisMonth(state) && meetsMinimumOilRequirement(state)
+        state.profileType == ProfileType.ESTABLISHMENT &&
+            hasRegisteredOilThisMonth(state) && meetsMinimumOilRequirement(state)
 
     fun onCollectorTabSelected(tab: CollectorHomeTab) {
         _uiState.update { it.copy(collectorTab = tab) }

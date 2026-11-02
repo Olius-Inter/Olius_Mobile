@@ -115,6 +115,25 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `cidadao PEV so recebe oleo - sem solicitar coleta e sem QR de entrega`() {
+        profiles.saveLocal(UserProfile("c-01", "Maria", "m@x.com", ProfileType.CITIZEN, isCollector = true))
+        val state = viewModel.uiState.value.copy(oilRegisteredThisMonthLiters = 10.0, oilAccumulatedLiters = 80.0)
+
+        assertTrue(state.isCitizenPev)
+        assertFalse(state.showQrCode)
+        assertFalse(viewModel.canRequestPickup(state))
+    }
+
+    @Test
+    fun `estabelecimento PEV continua com QR e pode solicitar coleta`() {
+        loginAsPev()
+        val state = viewModel.uiState.value
+
+        assertTrue(state.showQrCode)
+        assertTrue(viewModel.canRequestPickup(state))
+    }
+
+    @Test
     fun `solicitar coleta abre o popup com o volume acumulado quando liberado`() {
         loginAsPev()
         viewModel.onRequestPickupClick()

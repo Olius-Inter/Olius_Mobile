@@ -1,6 +1,7 @@
 package com.olius.app.domain.repository
 
 import com.olius.app.domain.entity.ProfileUpdate
+import com.olius.app.domain.entity.RegistrationAddress
 import com.olius.app.domain.entity.UserProfile
 
 /** Perfil do usuário na Core. */
@@ -13,6 +14,9 @@ interface UserProfileRepository {
 
     /** PATCH /users/me {name, email, telephone} (ainda NÃO existe na Core). */
     suspend fun updateMyProfile(update: ProfileUpdate): Result<UserProfile>
+
+    /** Endereço do cadastro (GET /users/me); null para quem não tem, como o cidadão. */
+    suspend fun fetchMyAddress(): Result<RegistrationAddress?>
 
     /** Coletor = GET /pevs/me com status APPROVED (sem PEV → false). */
     suspend fun fetchCollectorStatus(): Result<Boolean>

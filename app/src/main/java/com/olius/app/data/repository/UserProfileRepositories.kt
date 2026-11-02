@@ -10,6 +10,7 @@ import com.olius.app.domain.entity.ProfileEditUnavailableException
 import com.olius.app.domain.entity.ProfileNotFoundException
 import com.olius.app.domain.entity.ProfileType
 import com.olius.app.domain.entity.ProfileUpdate
+import com.olius.app.domain.entity.RegistrationAddress
 import com.olius.app.domain.entity.UserProfile
 import com.olius.app.domain.repository.UserProfileRepository
 import org.json.JSONObject
@@ -36,6 +37,12 @@ class HttpUserProfileRepository(
 ) : StoredUserProfileRepository(store) {
     override suspend fun fetchMyProfile(): Result<UserProfile> = runCatching {
         parse(JSONObject(client.get(ApiConfig.Main.USERS_ME))).also(store::save)
+    }
+
+    override suspend fun fetchMyAddress(): Result<RegistrationAddress?> = runCatching {
+        val json = JSONObject(client.get(ApiConfig.Main.USERS_ME))
+        store.save(parse(json))
+        json.optJSONObject("address")?.let(::parseAddress)
     }
 
     /** A rota ainda não existe na Core: hoje cai no 405 (só há GET em /users/me). */
@@ -80,6 +87,19 @@ class HttpUserProfileRepository(
             isCollector = json.optBoolean("isCollector", cachedCollector),
             qrToken = json.optStringOrNull("qrToken")
         )
+    }
+
+    private fun parseAddress(json: JSONObject): RegistrationAddress? {
+        val address = RegistrationAddress(
+            state = json.optString("state"),
+            city = json.optString("city"),
+            neighborhood = json.optString("neighborhood"),
+            street = json.optString("street"),
+            number = json.optString("number"),
+            cep = json.optString("cep"),
+            complement = json.optStringOrNull("complement")
+        )
+        return address.takeIf { it.street.isNotBlank() && it.cep.isNotBlank() }
     }
 
     private companion object {

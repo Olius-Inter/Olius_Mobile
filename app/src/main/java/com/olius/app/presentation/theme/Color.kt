@@ -69,10 +69,13 @@ val OliusSheetTextoSecundario = Color(0xFFB0B0B0)
 val OliusTituloMarrom: Color
     @Composable @ReadOnlyComposable get() = if (isDark) OliusTituloMarromEscuro else OliusTituloMarromClaro
 
-val OliusAmareloFundoSuave = Color(0xFFFFF3C4)
+val OliusAmareloFundoSuave: Color
+    @Composable @ReadOnlyComposable get() = if (isDark) Color(0xFF3A3018) else Color(0xFFFFF3C4)
 val OliusAmareloBorda = Color(0xFFFFD84D)
-val OliusBalaoUsuario = Color(0xFFFFE9A0)
-val OliusMarromAviso = Color(0xFF7A5300)
+val OliusBalaoUsuario: Color
+    @Composable @ReadOnlyComposable get() = if (isDark) Color(0xFF4A3B12) else Color(0xFFFFE9A0)
+val OliusMarromAviso: Color
+    @Composable @ReadOnlyComposable get() = if (isDark) OliusAmareloClaro else Color(0xFF7A5300)
 
 val OliusSegmentoFundo: Color
     @Composable @ReadOnlyComposable get() = if (isDark) OliusCampoFundoEscuro else Color(0xFFEDEDED)
