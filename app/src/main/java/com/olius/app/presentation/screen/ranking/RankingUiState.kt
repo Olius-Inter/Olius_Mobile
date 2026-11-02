@@ -1,59 +1,33 @@
 package com.olius.app.presentation.screen.ranking
 
-enum class RankingCategory(val label: String) {
-    ESTABLISHMENT("Estabelecimento"),
-    CITIZEN("Cidadão")
-}
-
-enum class RankingPeriod(val label: String) {
-    MONTH("Este Mês"),
-    YEAR("Este Ano"),
-    ALL_TIME("Geral")
-}
+import com.olius.app.domain.entity.AchievementsSummary
+import com.olius.app.domain.entity.RankingCategory
+import com.olius.app.domain.entity.RankingEntry
 
 enum class RankingTab { COMPETITIONS, ACHIEVEMENTS }
 
-data class RankingEntry(
-    val position: Int,
-    val name: String,
-    val city: String,
-    val liters: Double,
-    val isCurrentUser: Boolean = false
-) {
-    /**
-     * Iniciais do avatar (ref_ranking.png): primeira letra da primeira e da
-     * última palavra ("Dogão do Adriano" -> "DA"). Nome de uma palavra só usa
-     * a próxima maiúscula ("ToKonFome" -> "TK") ou a primeira consoante
-     * ("Reuters" -> "RT").
-     */
-    val initials: String
-        get() {
-            val words = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-            if (words.isEmpty()) return ""
-            if (words.size > 1) return "${words.first().first()}${words.last().first()}".uppercase()
-            val word = words.first()
-            val second = word.drop(1).firstOrNull { it.isUpperCase() }
-                ?: word.drop(1).firstOrNull { it.isLetter() && it.lowercaseChar() !in VOWELS }
-                ?: word.getOrNull(1)
-            return "${word.first()}${second ?: ""}".uppercase()
-        }
-
-    private companion object {
-        const val VOWELS = "aeiouáéíóúâêôãõà"
-    }
-}
-
 data class RankingUiState(
     val category: RankingCategory = RankingCategory.ESTABLISHMENT,
-    val period: RankingPeriod = RankingPeriod.MONTH,
     val tab: RankingTab = RankingTab.COMPETITIONS,
+    /** "Ano de 2026": o ranking é sempre do ano corrente. */
     val periodLabel: String = "",
-    val entries: List<RankingEntry> = emptyList()
+    /** "Atualizado em 24/10 às 10:15"; null quando a API não informa. */
+    val updatedLabel: String? = null,
+    val entries: List<RankingEntry> = emptyList(),
+    /** Posição da pessoa vinda da API — vale mesmo quando ela está fora do top N. */
+    val myPosition: Int? = null,
+    val myPoints: Long? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val achievements: AchievementsSummary? = null,
+    val isAchievementsLoading: Boolean = false,
+    val achievementsError: String? = null
 ) {
-    /** 1º, 2º e 3º lugares — o pódio. */
+    /** As três primeiras linhas — o pódio. Com empate, duas podem ter a mesma posição. */
     val podium: List<RankingEntry>
         get() = entries.take(3)
 
     val currentUser: RankingEntry?
         get() = entries.firstOrNull { it.isCurrentUser }
+            ?: if (myPosition != null && myPoints != null) RankingEntry(myPosition, "", "", myPoints, isCurrentUser = true) else null
 }

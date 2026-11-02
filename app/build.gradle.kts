@@ -77,4 +77,6 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
+    // org.json de verdade nos testes: o android.jar só tem stubs que lançam exceção.
+    testImplementation(libs.org.json)
 }
