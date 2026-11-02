@@ -12,7 +12,6 @@ import org.junit.Test
 import java.io.IOException
 
 class SyncUserProfileUseCaseTest {
-
     private val profile = UserProfile("u-1", "Maria", "maria@x.com", ProfileType.CITIZEN)
 
     @Test

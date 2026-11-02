@@ -11,34 +11,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.presentation.components.BOTTOM_NAV_CONTENT_PADDING
 import com.olius.app.presentation.screen.PerfilType.AuthErrorMessage
 import com.olius.app.presentation.screen.PerfilType.OliusPhoneField
@@ -46,15 +40,10 @@ import com.olius.app.presentation.theme.OliusAmarelo
 import com.olius.app.presentation.theme.OliusFundoTela
 import com.olius.app.presentation.theme.OliusMarromAviso
 import com.olius.app.presentation.theme.OliusTextoPrimario
-import com.olius.app.presentation.theme.OliusTextoPrimarioClaro
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusTituloMarrom
 
-/**
- * "Editar Perfil" (Figma "Mobile V2/Perfil/Editar Perfil"): só nome, e-mail e
- * telefone com DDI. Gênero, país, nome de usuário e endereço da referência
- * ficaram fora: não existem no banco para o perfil.
- */
+/** "Editar Perfil": só nome, e-mail e telefone com DDI. */
 @Composable
 fun EditProfileScreen(
     onBack: () -> Unit,
@@ -65,7 +54,6 @@ fun EditProfileScreen(
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(state.saved) { if (state.saved) onSaved() }
-    // Sem rede: mesma tela cheia "Sem conexão" da Home e do Histórico.
     LaunchedEffect(state.isOffline) { if (state.isOffline) onConnectionError() }
 
     Box(
@@ -83,15 +71,7 @@ fun EditProfileScreen(
         ) {
             Spacer(Modifier.height(8.dp))
             Box(Modifier.fillMaxWidth()) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Voltar", tint = OliusTextoPrimarioClaro)
-                }
+                OliusBackButton(onClick = onBack)
                 Text(
                     "Editar Perfil",
                     fontSize = 22.sp,
@@ -146,7 +126,6 @@ fun EditProfileScreen(
     }
 }
 
-/** Campo com contorno amarelo e rótulo em cima, como na referência. */
 @Composable
 private fun ProfileField(
     label: String,

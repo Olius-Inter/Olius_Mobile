@@ -3,6 +3,7 @@ package com.olius.app.presentation.screen.PerfilType
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.olius.app.data.remote.ApiConfig
 import com.olius.app.data.remote.AppContainer
 import com.olius.app.domain.entity.AuthUnavailableException
 import com.olius.app.domain.entity.InvalidResetCodeException
@@ -27,8 +28,8 @@ const val RESET_CODE_LENGTH = 6
 /** Espera entre um envio de código e outro (a Core aceita 1 por e-mail a cada 60 s). */
 const val RESEND_COOLDOWN_SECONDS = 60
 
-/** Os 3 passos da recuperação: e-mail -> código (ref_recuperar_senha) -> nova senha (ref_recuperar_senha_nova). */
-enum class ForgotPasswordStep { EMAIL, CODE, NEW_PASSWORD }
+/** Passos da recuperação. */
+enum class ForgotPasswordStep { EMAIL, CODE, NEW_PASSWORD, LINK_SENT }
 
 data class ForgotPasswordUiState(
     val step: ForgotPasswordStep = ForgotPasswordStep.EMAIL,
@@ -56,20 +57,12 @@ sealed class ForgotPasswordEvent {
     object PasswordReset : ForgotPasswordEvent()
 }
 
-/**
- * Recuperar senha na Core (código de 6 dígitos por e-mail):
- * 1. `POST /auth/password-resets {email}` → a Core responde 202 sempre, então a
- *    tela mostra a mesma mensagem para e-mail com e sem conta;
- * 2. `POST /verify {email, code}` → `resetToken`;
- * 3. `POST /confirm {resetToken, newPassword}` → volta pro login.
- * As rotas ainda não existem na Core (ver PEDIDO_ESQUECI_SENHA_CODIGO.md).
- */
+/** Recuperar senha na Core. */
 class ForgotPasswordViewModel(
     private val repository: PasswordResetRepository = AppContainer.passwordResetRepository,
-    // Mesmo motivo do PerfilTypeViewModel: `Patterns` não funciona em teste unitário.
-    private val isValidEmail: (String) -> Boolean = { Patterns.EMAIL_ADDRESS.matcher(it).matches() }
+    private val isValidEmail: (String) -> Boolean = { Patterns.EMAIL_ADDRESS.matcher(it).matches() },
+    val useCode: Boolean = ApiConfig.PASSWORD_RESET_WITH_CODE
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(ForgotPasswordUiState())
     val uiState: StateFlow<ForgotPasswordUiState> = _uiState.asStateFlow()
 
@@ -79,7 +72,6 @@ class ForgotPasswordViewModel(
     /** Token do passo 2 → 3. Fica só na memória, nunca no estado da tela. */
     private var resetToken: String? = null
 
-    /** E-mail do último código pedido (voltar e continuar com o mesmo e-mail não pede outro). */
     private var lastRequestedEmail: String? = null
 
     private var requestJob: Job? = null
@@ -121,52 +113,56 @@ class ForgotPasswordViewModel(
             _uiState.update { it.copy(errorMessage = error) }
             return
         }
+        val sentStep = if (useCode) ForgotPasswordStep.CODE else ForgotPasswordStep.LINK_SENT
         when (state.step) {
             ForgotPasswordStep.EMAIL ->
-                // Voltou do código sem trocar o e-mail e a espera não acabou: usa o código já enviado.
-                if (state.email == lastRequestedEmail && state.resendSecondsLeft > 0) goTo(ForgotPasswordStep.CODE)
+                if (state.email == lastRequestedEmail && state.resendSecondsLeft > 0) goTo(sentStep)
                 else requestCode(state.email, isResend = false)
 
             ForgotPasswordStep.CODE -> verifyCode(state.email, state.code)
             ForgotPasswordStep.NEW_PASSWORD -> confirm(state.newPassword)
+            ForgotPasswordStep.LINK_SENT -> Unit
         }
     }
 
-    /** "Reenviar código": só depois da espera de [RESEND_COOLDOWN_SECONDS]. */
+    /** "Reenviar código"/"Reenviar e-mail": só depois da espera de [RESEND_COOLDOWN_SECONDS]. */
     fun onResendCode() {
         val state = _uiState.value
-        if (state.isLoading || state.resendSecondsLeft > 0 || state.step != ForgotPasswordStep.CODE) return
+        val sentStep = if (useCode) ForgotPasswordStep.CODE else ForgotPasswordStep.LINK_SENT
+        if (state.isLoading || state.resendSecondsLeft > 0 || state.step != sentStep) return
         requestCode(state.email, isResend = true)
     }
 
-    /**
-     * "Voltar": volta um passo. Devolve `false` quando já está no primeiro,
-     * pra tela saber que deve fechar e voltar pro login.
-     */
+    /** "Voltar": volta um passo. */
     fun onBack(): Boolean {
         val previous = when (_uiState.value.step) {
             ForgotPasswordStep.EMAIL -> return false
-            ForgotPasswordStep.CODE -> ForgotPasswordStep.EMAIL
+            ForgotPasswordStep.CODE, ForgotPasswordStep.LINK_SENT -> ForgotPasswordStep.EMAIL
             ForgotPasswordStep.NEW_PASSWORD -> ForgotPasswordStep.CODE
         }
-        // Resposta que chegar depois de voltar não pode mudar de passo.
         requestJob?.cancel()
         if (previous == ForgotPasswordStep.CODE) resetToken = null
         _uiState.update { it.copy(step = previous, isLoading = false, errorMessage = null, infoMessage = null) }
         return true
     }
 
+    /** Pede o código ou, no fluxo da Core, o link por e-mail. */
     private fun requestCode(email: String, isResend: Boolean) = launchRequest {
-        repository.requestCode(email)
+        val result = if (useCode) repository.requestCode(email) else repository.requestResetLink(email)
+        result
             .onSuccess {
                 lastRequestedEmail = email
                 startResendCountdown()
                 _uiState.update {
                     it.copy(
-                        step = ForgotPasswordStep.CODE,
+                        step = if (useCode) ForgotPasswordStep.CODE else ForgotPasswordStep.LINK_SENT,
                         code = "",
                         isLoading = false,
-                        infoMessage = if (isResend) "Se houver uma conta com esse e-mail, enviamos um novo código" else null
+                        infoMessage = when {
+                            !isResend -> null
+                            useCode -> "Se houver uma conta com esse e-mail, enviamos um novo código"
+                            else -> "Se houver uma conta com esse e-mail, enviamos um novo link"
+                        }
                     )
                 }
             }
@@ -230,7 +226,6 @@ class ForgotPasswordViewModel(
         _uiState.update { it.copy(isLoading = false, errorMessage = mapError(error)) }
     }
 
-    // Exceções do domínio → mensagens em português (mesmos textos do login).
     private fun mapError(error: Throwable): String = when (error) {
         is InvalidResetCodeException -> "Código inválido ou expirado"
         is WeakPasswordException -> "A senha não cumpre as regras abaixo"
@@ -254,8 +249,9 @@ class ForgotPasswordViewModel(
         ForgotPasswordStep.CODE ->
             if (state.code.length < RESET_CODE_LENGTH) "Digite os $RESET_CODE_LENGTH dígitos do código" else null
 
+        ForgotPasswordStep.LINK_SENT -> null
+
         ForgotPasswordStep.NEW_PASSWORD -> {
-            // Mesma regra da Core (PasswordRule), igual ao cadastro.
             val unmet = PasswordRule.unmet(state.newPassword)
             when {
                 state.newPassword.isEmpty() -> "Digite a nova senha"

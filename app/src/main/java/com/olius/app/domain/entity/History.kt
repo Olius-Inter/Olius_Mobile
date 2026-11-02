@@ -1,18 +1,40 @@
 package com.olius.app.domain.entity
 
-/** Indicadores do topo (Figma "Card/dash coletas") — iguais na Home e no Histórico. */
+/** Indicadores do topo — iguais na Home e no Histórico. */
 data class ImpactStats(
     val oilCollectedLiters: Double,
     val waterPreservedLiters: Double,
     val co2AvoidedKg: Double,
     val biodieselLiters: Double
-)
+) {
+    companion object {
+        /** Água, CO2 e biodiesel calculados no app a partir dos litros de óleo ([OilImpact]). */
+        fun fromOilLiters(oilLiters: Double) = ImpactStats(
+            oilCollectedLiters = oilLiters,
+            waterPreservedLiters = OilImpact.waterPreservedLiters(oilLiters),
+            co2AvoidedKg = OilImpact.co2AvoidedKg(oilLiters),
+            biodieselLiters = OilImpact.biodieselLiters(oilLiters)
+        )
+    }
+}
 
-/**
- * Status de uma coleta do estabelecimento (filtros do Histórico B2B).
- * Banco: PENDING = `collection_request` PENDING/APPROVED sem `collection`;
- * COLLECTED = `collection` com `record_status = 'RECORDED'`.
- */
+/** Impacto ambiental de reciclar o óleo, calculado no app. */
+object OilImpact {
+    /** 1 L de óleo contamina até 25 mil litros de água (Sabesp). */
+    const val WATER_LITERS_PER_OIL_LITER = 25_000.0
+
+    /** Rendimento conservador (93–95% em laboratório). */
+    const val BIODIESEL_LITERS_PER_OIL_LITER = 0.9
+
+    /** 2,25 kg de CO2 por litro de biodiesel (BioPower) × 0,9 = 2,025 por litro de óleo. */
+    const val CO2_KG_PER_OIL_LITER = 2.025
+
+    fun waterPreservedLiters(oilLiters: Double) = oilLiters * WATER_LITERS_PER_OIL_LITER
+    fun biodieselLiters(oilLiters: Double) = oilLiters * BIODIESEL_LITERS_PER_OIL_LITER
+    fun co2AvoidedKg(oilLiters: Double) = oilLiters * CO2_KG_PER_OIL_LITER
+}
+
+/** Status de uma coleta do estabelecimento (filtros do Histórico B2B). */
 enum class CollectionStatus(val label: String, val apiValue: String) {
     COLLECTED("Coletado", "COLLECTED"),
     PENDING("Pendente", "PENDING");
@@ -47,7 +69,7 @@ data class DisposalRecord(
     val dateLabel: String,
     val waterPreservedLiters: Double,
     val co2AvoidedKg: Double,
-    val biodieselKg: Double
+    val biodieselLiters: Double
 )
 
 data class CitizenHistory(
@@ -56,7 +78,6 @@ data class CitizenHistory(
     val records: List<DisposalRecord>
 )
 
-/** Card "Solicitações de Coletas" da Home B2B (pedidos ainda em andamento). */
 data class PickupRequestSummary(
     val id: String,
     val liters: Double,

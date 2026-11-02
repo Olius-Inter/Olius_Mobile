@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AuthRulesTest {
-
     @Test
     fun `senha segue a regra da Core`() {
         assertEquals(PasswordRule.entries.toList(), PasswordRule.unmet(""))
@@ -14,7 +13,6 @@ class AuthRulesTest {
         assertEquals(listOf(PasswordRule.UPPERCASE), PasswordRule.unmet("senha@12345"))
         assertEquals(listOf(PasswordRule.DIGIT), PasswordRule.unmet("Senha@abcde"))
         assertEquals(listOf(PasswordRule.SYMBOL), PasswordRule.unmet("Senha12345"))
-        // Espaço não conta como símbolo (igual à Core).
         assertEquals(listOf(PasswordRule.SYMBOL), PasswordRule.unmet("Senha 12345"))
         assertTrue(PasswordRule.unmet("Senha@12345").isEmpty())
         assertEquals(listOf(PasswordRule.LENGTH), PasswordRule.unmet("A1!" + "a".repeat(126)))

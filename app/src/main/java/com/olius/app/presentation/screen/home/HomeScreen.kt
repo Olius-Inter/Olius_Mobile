@@ -83,6 +83,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -136,27 +137,14 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-// Duração da animação de entrada dos bottom sheets (Perfil/Notificações) —
-// igual ao slide dos cards de login/cadastro em PerfilType.kt
-// (HEADER_INTRO_DURATION_MS/AnimatedContent de lá usa 840ms com a mesma
-// easing). Ver documentação em HOME_SCREEN.md pra reaproveitar em outro lugar.
 private const val SHEET_ENTER_DURATION_MS = 840
 private const val SHEET_EXIT_DURATION_MS = 300
 
-// Altura fixa da lista de Notificações: o sheet tem o mesmo tamanho com 0 ou
-// 20 notificações (com muitas, a lista rola por dentro).
 private val NOTIFICATIONS_LIST_HEIGHT = 440.dp
 
-// Contagem dos cards de 0 até o total (os 4 juntos). Máximo pedido: 3 s.
 private const val STAT_COUNT_DURATION_MS = 2000
 
-/**
- * Tela Home (ver referencia_home.png / ref_home_cell_1.png / ref_home_cell_2.png).
- * Só monta a UI a partir do HomeUiState; toda a lógica de negócio (registrar
- * óleo, solicitar coleta, notificações, logout) fica no HomeViewModel — a
- * maior parte das funções lá são placeholders vazios de propósito (ver
- * HOME_SCREEN.md).
- */
+/** Tela Home. */
 @Composable
 fun HomeScreen(
     topBarState: OliusTopBarState,
@@ -165,7 +153,6 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val isPickupEnabled = viewModel.canRequestPickup(state)
-    // Fica no topo da Home: o NavHost salva o estado ao trocar de aba, então os cards não recontam à toa.
     val countMemory = rememberSaveable(saver = StatCountMemory.Saver) { StatCountMemory() }
 
     OliusTabScaffold(topBarState = topBarState) {
@@ -175,23 +162,19 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             if (state.isOffline) {
-                // A MainScaffold troca para a tela cheia "Sem conexão" (rota error).
                 Spacer(Modifier.height(24.dp))
             } else {
                 Spacer(Modifier.height(24.dp))
-                // Figma: o botão "QR Code" aparece na Home B2B e B2C; o Coletor não tem.
                 WelcomeSection(userName = state.userName, onQrCodeClick = onOpenQrCode.takeIf { !state.isCollector })
                 Spacer(Modifier.height(20.dp))
                 when {
                     state.profileType == ProfileType.CITIZEN -> CitizenHomeContent(
                         state = state,
                         countMemory = countMemory,
-                        // Só quem é PEV (ponto de coleta aprovado) registra óleo.
                         onRegisterOil = viewModel::onRegisterOilClick.takeIf { state.isCollector },
                         onTabSelected = viewModel::onCitizenTabSelected
                     )
                     else -> {
-                        // "Registrar óleo" / "Solicitar coleta" para todo estabelecimento (PEV ou não).
                         ActionButtonsRow(
                             isPickupEnabled = isPickupEnabled,
                             onRegisterOil = viewModel::onRegisterOilClick,
@@ -249,18 +232,12 @@ fun HomeScreen(
     }
 }
 
-/**
- * Bottom sheet de Notificações. Fica fora da [HomeScreen] de propósito: quem
- * desenha é o `MainScaffoldScreen`, por cima de QUALQUER aba, já que o sino do
- * header aparece em todas (ver OliusTopBar.kt). O avatar abre a tela de Perfil
- * (sem popup: a Core não tem vínculo entre contas).
- */
+/** Bottom sheet de Notificações. */
 @Composable
 fun HomeOverlaySheets(viewModel: HomeViewModel) {
     val state by viewModel.uiState.collectAsState()
 
     if (state.isNotificationsSheetOpen) {
-
         SlideUpDialog(onDismissRequest = viewModel::onDismissNotificationsSheet) { animatedDismiss ->
             NotificationsSheetContent(
                 filter = state.notificationFilter,
@@ -273,16 +250,19 @@ fun HomeOverlaySheets(viewModel: HomeViewModel) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Saudação
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun WelcomeSection(userName: String, onQrCodeClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("Olá, $userName!", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = OliusTextoPrimario)
-            Text(greetingSubtitle(), fontSize = 14.sp, color = OliusTextoSecundario)
+            var hour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(60_000)
+                    hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                }
+            }
+            Text(greetingSubtitle(hour), fontSize = 14.sp, color = OliusTextoSecundario)
         }
         if (onQrCodeClick != null) {
             Button(
@@ -300,24 +280,13 @@ private fun WelcomeSection(userName: String, onQrCodeClick: (() -> Unit)?, modif
     }
 }
 
-private fun greetingSubtitle(): String {
-    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    return when {
-        hour < 12 -> "Bom dia!"
-        hour < 18 -> "Boa tarde!"
-        else -> "Boa noite!"
-    }
+/** 5h–11h bom dia, 12h–17h boa tarde, 18h–4h boa noite (madrugada não é "bom dia"). */
+internal fun greetingSubtitle(hour: Int): String = when (hour) {
+    in 5..11 -> "Bom dia!"
+    in 12..17 -> "Boa tarde!"
+    else -> "Boa noite!"
 }
 
-// ---------------------------------------------------------------------------
-// Botões de ação: Registrar óleo / Solicitar coleta
-// ---------------------------------------------------------------------------
-
-/**
- * Cores iguais às de ref_home_cell_1.png / referencia_home.png: "Registrar
- * óleo" sempre amarelo; "Solicitar coleta" fica LARANJA quando habilitado e
- * CINZA quando não (ver [HomeViewModel.canRequestPickup]).
- */
 @Composable
 private fun ActionButtonsRow(
     isPickupEnabled: Boolean,
@@ -364,10 +333,6 @@ private fun ActionButtonsRow(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Grid 2x2 de indicadores
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun StatsGrid(state: HomeUiState, countMemory: StatCountMemory, modifier: Modifier = Modifier) {
     ImpactStatsGrid(
@@ -380,10 +345,6 @@ private fun StatsGrid(state: HomeUiState, countMemory: StatCountMemory, modifier
     )
 }
 
-/**
- * "Card/dash coletas" do Figma — o mesmo na Home e no Histórico (B2B e B2C).
- * [countMemory] liga a contagem de 0 até o total (só a Home passa); null = número fixo, como no Histórico.
- */
 @Composable
 internal fun ImpactStatsGrid(
     oilLiters: Double,
@@ -416,7 +377,6 @@ internal fun ImpactStatsGrid(
     }
 }
 
-/** Ordem do Figma (B2B e B2C): Óleo Coletado à esquerda, Água Preservada à direita. */
 @Composable
 private fun RowScope.OilAndWaterStats(oilLiters: Double, waterLiters: Double, countMemory: StatCountMemory?) {
     StatCard(
@@ -435,10 +395,7 @@ private fun RowScope.OilAndWaterStats(oilLiters: Double, waterLiters: Double, co
     )
 }
 
-/**
- * Último valor que cada card já mostrou ("oil", "water", "co2", "biodiesel").
- * Se o valor não mudou, o card não reconta ao voltar para a Home.
- */
+/** Último valor que cada card já mostrou ("oil", "water", "co2", "biodiesel"). */
 internal class StatCountMemory(initial: Map<String, Double> = emptyMap()) {
     private val shown = HashMap(initial)
 
@@ -456,11 +413,7 @@ internal class StatCountMemory(initial: Map<String, Double> = emptyMap()) {
     }
 }
 
-/**
- * Texto do card contando do último valor mostrado (0 na primeira vez) até [target].
- * Anima um progresso 0..1 e calcula o número em Double: o valor final é exato.
- * Com as animações do sistema desligadas, mostra o valor final direto.
- */
+/** Texto do card contando do último valor mostrado (0 na primeira vez) até [target]. */
 @Composable
 private fun countingText(key: String, target: Double, compact: Boolean, memory: StatCountMemory?): String {
     if (memory == null) return if (compact) formatCompact(target) else formatNumber(target)
@@ -482,10 +435,6 @@ private fun countingText(key: String, target: Double, compact: Boolean, memory: 
     return formatCounting(shown, target, compact)
 }
 
-// ---------------------------------------------------------------------------
-// Home do estabelecimento (Figma: Home / Vazio, Preenchido e Pendência)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun EstablishmentDashboard(state: HomeUiState, isPickupEnabled: Boolean, countMemory: StatCountMemory) {
     Spacer(Modifier.height(22.dp))
@@ -502,7 +451,7 @@ private fun EstablishmentDashboard(state: HomeUiState, isPickupEnabled: Boolean,
     SustainabilityLevelCard(state = state)
 }
 
-/** "Solicitações de Coletas" (Figma Home/Pendência): volume, data e chip "Pendente". */
+/** "Solicitações de Coletas": volume, data e chip "Pendente". */
 @Composable
 private fun PendingRequestsSection(requests: List<PickupRequestSummary>) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -537,7 +486,7 @@ private fun PendingRequestsSection(requests: List<PickupRequestSummary>) {
     }
 }
 
-/** Aba "Solicitações" do Coletor (Figma Home/Pendência-2): Coletar ou Descartar. */
+/** Aba "Solicitações" do Coletor: Coletar ou Descartar. */
 @Composable
 private fun CollectorRequestsList(
     requests: List<CollectorRequest>,
@@ -595,15 +544,7 @@ private fun CollectorRequestsList(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Home do cidadão (Figma: "Mobile / Cidadão / Home / Preenchido")
-// ---------------------------------------------------------------------------
-
-/**
- * B2C: sem "Solicitar coleta", tanque, CO² e biodiesel (o cidadão entrega no
- * PEV). Banner com "Registrar óleo", card de nível com o nome do nível
- * ("Prata"), dois indicadores e as abas Pontos PEV / Dicas.
- */
+/** B2C: sem "Solicitar coleta", tanque, CO² e biodiesel (o cidadão entrega no PEV). */
 @Composable
 private fun CitizenHomeContent(
     state: HomeUiState,
@@ -612,7 +553,6 @@ private fun CitizenHomeContent(
     onTabSelected: (CitizenHomeTab) -> Unit
 ) {
     CitizenBanner(onRegisterOil = onRegisterOil)
-    // Figma Home/Vazio (B2C): sem nível ainda, o card de sustentabilidade some.
     if (state.currentLevelProgressLiters > 0.0) {
         Spacer(Modifier.height(16.dp))
         CitizenLevelCard(state = state)
@@ -641,7 +581,6 @@ private fun CitizenHomeContent(
     }
 }
 
-/** "Card- Dicas - B2C": estrela, título e texto. */
 @Composable
 private fun TipCard(tip: Tip) {
     Surface(
@@ -703,7 +642,6 @@ private fun CitizenLevelCard(state: HomeUiState) {
         border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            // A arte do Figma já vem com o quadrado cinza arredondado.
             Image(painter = painterResource(R.drawable.ic_level_silver), contentDescription = "Selo do nível", modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -725,13 +663,7 @@ private fun CitizenLevelCard(state: HomeUiState) {
     }
 }
 
-/**
- * Ícone grande e apagado (`alpha`) vazando pelo canto inferior direito, por
- * baixo do conteúdo — igual às referências (ref_home_cell_1.png): cada card
- * tem uma marca d'água do próprio ícone, bem maior e bem mais clara que o
- * ícone pequeno ao lado do rótulo. O `Surface` do card recorta (`shape`)
- * a parte que vaza pra fora, então não precisa de clip manual aqui.
- */
+/** Ícone grande e apagado (`alpha`) vazando pelo canto inferior direito, por baixo do conteúdo. */
 @Composable
 private fun StatCard(
     iconRes: Int,
@@ -777,10 +709,6 @@ private fun StatCard(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Nível de óleo acumulado (tanque + selo "Pronto para coleta")
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun OilLevelCard(state: HomeUiState, isPickupEnabled: Boolean, modifier: Modifier = Modifier) {
     Surface(
@@ -817,12 +745,9 @@ private fun OilLevelCard(state: HomeUiState, isPickupEnabled: Boolean, modifier:
                         color = OliusTextoSecundario
                     )
                     Spacer(Modifier.height(10.dp))
-                    // Só mostra "Pronto para coleta" quando a coleta está liberada
-                    // de verdade (mesma regra do botão — HomeViewModel.canRequestPickup).
                     if (state.showPickupReadyBadge && isPickupEnabled) {
                         ReadyForPickupBadge()
                     } else if (state.oilAccumulatedLiters < state.minimumForPickupLiters) {
-                        // Figma Home/Vazio: abaixo do mínimo aparece "Nível não atingido".
                         LevelNotReachedBadge()
                     }
                 }
@@ -861,13 +786,7 @@ private fun LevelNotReachedBadge(modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * Tanque de óleo (ver oil_drop.png): a gota é CINZA quando o tanque está
- * vazio e BRANCA conforme o amarelo sobe — se estiver na metade, metade da
- * gota (a parte "dentro" do amarelo) fica branca e a outra metade cinza.
- * Isso é feito desenhando a gota cinza por baixo e uma cópia branca por
- * cima, recortada (clipToBounds) na mesma fração do preenchimento.
- */
+/** Tanque de óleo: a gota é CINZA quando o tanque está vazio e BRANCA conforme o amarelo sobe. */
 @Composable
 private fun OilTankGauge(fraction: Float, modifier: Modifier = Modifier) {
     val animatedFraction by animateFloatAsState(
@@ -883,7 +802,6 @@ private fun OilTankGauge(fraction: Float, modifier: Modifier = Modifier) {
             .background(OliusSuperficie)
             .border(BorderStroke(1.5.dp, OliusCampoBorda), RoundedCornerShape(14.dp))
     ) {
-        // Preenchimento amarelo subindo de baixo pra cima, de acordo com o nível.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -922,10 +840,6 @@ private fun OilTankGauge(fraction: Float, modifier: Modifier = Modifier) {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Nível de sustentabilidade (selo + barra de progresso)
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun SustainabilityLevelCard(state: HomeUiState, modifier: Modifier = Modifier) {
@@ -969,12 +883,6 @@ private fun SustainabilityLevelCard(state: HomeUiState, modifier: Modifier = Mod
     }
 }
 
-/**
- * Barra bem mais grossa que uma `LinearProgressIndicator` comum, igual à
- * referência (referencia_home.png) — e com o rótulo do total (`targetLabel`,
- * ex.: "100L") escrito DENTRO da própria barra, alinhado à direita, em vez
- * de só no texto acima.
- */
 @Composable
 private fun LevelProgressBar(fraction: Float, targetLabel: String, modifier: Modifier = Modifier) {
     val animatedFraction by animateFloatAsState(
@@ -1007,10 +915,6 @@ private fun LevelProgressBar(fraction: Float, targetLabel: String, modifier: Mod
         )
     }
 }
-
-// ---------------------------------------------------------------------------
-// Popup: Registrar Óleo (ver ref_register_oil.png)
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun RegisterOilDialog(
@@ -1070,12 +974,7 @@ private fun RegisterOilDialog(
     }
 }
 
-/**
- * Popup centralizado (Registrar Óleo / Solicitar Coleta). Ocupa a tela toda
- * para que tocar em QUALQUER lugar fora do card feche — inclusive nas margens
- * laterais, que no Dialog padrão ainda contam como "dentro" da janela. O
- * Surface do card consome o toque, então tocar nele não fecha.
- */
+/** Popup centralizado (Registrar Óleo / Solicitar Coleta). */
 @Composable
 private fun CenteredDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -1095,12 +994,7 @@ private fun CenteredDialog(onDismiss: () -> Unit, content: @Composable () -> Uni
     }
 }
 
-/**
- * Cores dos campos dos popups (Registrar Óleo / Solicitar Coleta). O texto é
- * fixo em [OliusTextoPrimario]: sem isso o Material usa o `onSurface` do tema,
- * que fica BRANCO quando o celular está em modo escuro — e o fundo do popup
- * continua branco.
- */
+/** Cores dos campos dos popups (Registrar Óleo / Solicitar Coleta). */
 @Composable
 private fun dialogFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = OliusTextoPrimario,
@@ -1147,10 +1041,6 @@ private fun NumericStepperField(value: String, onValueChange: (String) -> Unit, 
         colors = dialogFieldColors()
     )
 }
-
-// ---------------------------------------------------------------------------
-// Popup: Solicitar Coleta (ver ref_solicitar_coleta.png)
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun RequestPickupDialog(
@@ -1253,15 +1143,6 @@ private fun BorderedDateField(value: String, onValueChange: (String) -> Unit, mo
     }
 }
 
-// ---------------------------------------------------------------------------
-// Bottom sheet genérico animado de baixo pra cima (Perfil/Notificações) —
-// mesma animação de entrada usada pelos cards de login/cadastro em
-// PerfilType.kt (slideInVertically + fadeIn, tween ~840ms, FastOutSlowInEasing).
-// Implementado com Dialog (não ModalBottomSheet padrão) pra reaproveitar
-// exatamente essa animação e cobrir a tela inteira, inclusive por cima do
-// menu inferior fixo — ver HOME_SCREEN.md.
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun SlideUpDialog(
     onDismissRequest: () -> Unit,
@@ -1324,10 +1205,6 @@ private fun SlideUpDialog(
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Bottom sheet: Notificações (ver ref_notification.png)
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun NotificationsSheetContent(
@@ -1443,12 +1320,6 @@ private fun NotificationRow(item: NotificationItem, onAction: (NotificationItem)
     }
 }
 
-// ---------------------------------------------------------------------------
-// Formatação numérica — usa ponto decimal (não vírgula) de propósito, pra
-// bater visualmente com as referências ("625.9K", "50.3"), mesmo com o resto
-// do app em pt-BR. Ver HOME_SCREEN.md.
-// ---------------------------------------------------------------------------
-
 internal fun formatNumber(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString()
     else String.format(Locale.US, "%.1f", value)
@@ -1458,12 +1329,7 @@ internal fun formatCompact(value: Double): String {
     return String.format(Locale.US, "%.1fK", value / 1000.0)
 }
 
-/**
- * Número durante a contagem com o MESMO formato do valor final: mesmas casas
- * decimais e o "K" desde o começo, para o texto não mudar de largura nem
- * "piscar". Quando [value] chega em [target], o texto é igual ao de
- * [formatNumber] / [formatCompact].
- */
+/** Número durante a contagem com o MESMO formato do valor final. */
 internal fun formatCounting(value: Double, target: Double, compact: Boolean): String {
     val inThousands = compact && target >= 1000
     val decimals = if (inThousands || target != Math.floor(target)) 1 else 0

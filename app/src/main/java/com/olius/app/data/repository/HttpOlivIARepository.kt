@@ -15,20 +15,10 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.SocketTimeoutException
 
-/**
- * Chat da OlivIA pela Core: POST [ApiConfig.Main.CHAT] {message, conversationId?}
- * → {reply, conversationId}. O app nunca fala com a IA nem tem chave de LLM:
- * a Core tira o usuário do JWT e repassa para a IA.
- * [client] é o da Core com o JWT da sessão (401 → refresh → repete) e readTimeout de 60 s.
- * A rota AINDA NÃO EXISTE na Core: hoje vem 404 → [OlivIAException.NotAvailable].
- *
- * A Core não recebe arquivos: o anexo NÃO é enviado (só o texto) e a resposta avisa.
- */
+/** Chat da OlivIA pela Core: POST [ApiConfig.Main.CHAT] {message, conversationId?} → {reply, conversationId}. */
 class HttpOlivIARepository(private val client: ApiClient) : OlivIARepository {
-
     override fun reply(message: String, attachment: ChatAttachment?, conversationId: String?): Flow<OlivIAReplyChunk> = flow {
         if (message.isBlank()) {
-            // Só o anexo, sem texto: não há o que mandar para a Core.
             emit(OlivIAReplyChunk.Text(ATTACHMENT_ONLY_TEXT))
             return@flow
         }
@@ -62,7 +52,6 @@ class HttpOlivIARepository(private val client: ApiClient) : OlivIARepository {
         }
 
     private fun ApiException.toOlivIAException(): OlivIAException = when (code) {
-        // Rota ainda não publicada na Core.
         HTTP_NOT_FOUND, HTTP_METHOD_NOT_ALLOWED -> OlivIAException.NotAvailable()
         HTTP_UNAVAILABLE -> OlivIAException.Unavailable()
         HTTP_GATEWAY_TIMEOUT -> OlivIAException.Timeout(this)

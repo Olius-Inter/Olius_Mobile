@@ -1,9 +1,6 @@
 package com.olius.app.domain.entity
 
-/**
- * Tema escolhido na tela de Perfil. Padrão: [LIGHT], porque todas as telas do
- * Figma são claras; o escuro é opcional. [SYSTEM] segue o aparelho.
- */
+/** Tema escolhido na tela de Perfil. */
 enum class ThemeMode(val label: String) {
     LIGHT("Modo Claro"),
     DARK("Modo Escuro"),
@@ -23,10 +20,7 @@ enum class ThemeMode(val label: String) {
     }
 }
 
-/**
- * Dados enviados no "Editar Perfil" (PATCH /users/me). [telephone] é E.164 só
- * com dígitos (ex.: "5511999998888"); null = a pessoa apagou o telefone.
- */
+/** Dados enviados no "Editar Perfil" (PATCH /users/me). */
 data class ProfileUpdate(
     val name: String,
     val email: String,

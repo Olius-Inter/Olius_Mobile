@@ -24,12 +24,15 @@ import java.io.IOException
 /** Repositório falso: guarda as chamadas e responde o que o teste mandar. */
 private class FakePasswordResetRepository : PasswordResetRepository {
     val requested = mutableListOf<String>()
+    val linksRequested = mutableListOf<String>()
     val verified = mutableListOf<Pair<String, String>>()
     val confirmed = mutableListOf<Pair<String, String>>()
 
     var requestResult: Result<Unit> = Result.success(Unit)
     var verifyResult: Result<PasswordResetTicket> = Result.success(PasswordResetTicket("token-1", "2030-01-01T00:10:00Z"))
     var confirmResult: Result<Unit> = Result.success(Unit)
+
+    override suspend fun requestResetLink(email: String): Result<Unit> = requestResult.also { linksRequested += email }
 
     override suspend fun requestCode(email: String): Result<Unit> = requestResult.also { requested += email }
 
@@ -41,14 +44,14 @@ private class FakePasswordResetRepository : PasswordResetRepository {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ForgotPasswordViewModelTest {
-
     private val dispatcher = UnconfinedTestDispatcher()
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule(dispatcher)
 
     private val repository = FakePasswordResetRepository()
-    private val viewModel = ForgotPasswordViewModel(repository, isValidEmail = { it.contains("@") })
+    private val viewModel = ForgotPasswordViewModel(repository, isValidEmail = { it.contains("@") }, useCode = true)
+    private val linkViewModel = ForgotPasswordViewModel(repository, isValidEmail = { it.contains("@") }, useCode = false)
     private val state get() = viewModel.uiState.value
 
     private val strongPassword = "NovaSenha@123"
@@ -63,8 +66,6 @@ class ForgotPasswordViewModelTest {
         viewModel.onCodeChange("123456")
         viewModel.onContinue()
     }
-
-    // ---------------- Passo 1: e-mail ----------------
 
     @Test
     fun `passo do e-mail valida antes de chamar a Core`() {
@@ -120,8 +121,6 @@ class ForgotPasswordViewModelTest {
         assertEquals("Muitas tentativas. Aguarde um minuto e tente de novo", state.errorMessage)
     }
 
-    // ---------------- Passo 2: código ----------------
-
     @Test
     fun `codigo aceita so 6 digitos`() {
         goToCodeStep()
@@ -162,8 +161,6 @@ class ForgotPasswordViewModelTest {
         assertEquals("123456", state.code)
     }
 
-    // ---------------- Reenviar código ----------------
-
     @Test
     fun `reenviar so libera depois de 60 segundos`() = runTest(dispatcher) {
         goToCodeStep()
@@ -187,7 +184,6 @@ class ForgotPasswordViewModelTest {
         assertEquals(2, repository.requested.size)
         assertEquals("", state.code)
         assertEquals("Se houver uma conta com esse e-mail, enviamos um novo código", state.infoMessage)
-        // A espera recomeça.
         assertEquals(RESEND_COOLDOWN_SECONDS, state.resendSecondsLeft)
         advanceTimeBy(RESEND_COOLDOWN_SECONDS * 1_000L)
     }
@@ -207,8 +203,6 @@ class ForgotPasswordViewModelTest {
         assertEquals(listOf("lois@gmail.com", "outra@gmail.com"), repository.requested)
         advanceTimeBy(RESEND_COOLDOWN_SECONDS * 1_000L)
     }
-
-    // ---------------- Passo 3: nova senha ----------------
 
     @Test
     fun `senha fraca nao chama a Core e diz a regra que falta`() {
@@ -290,8 +284,6 @@ class ForgotPasswordViewModelTest {
         assertEquals("", state.code)
     }
 
-    // ---------------- Tela ----------------
-
     @Test
     fun `mostrar e esconder cada senha separadamente`() {
         viewModel.onToggleNewPasswordVisibility()
@@ -315,4 +307,29 @@ class ForgotPasswordViewModelTest {
         assertFalse(viewModel.onBack())
         assertEquals(ForgotPasswordStep.EMAIL, state.step)
     }
-}
+
+    @Test
+    fun `fluxo do link pede o link e mostra o passo de link enviado`() {
+        linkViewModel.onEmailChange("lois@gmail.com")
+        linkViewModel.onContinue()
+
+        assertEquals(listOf("lois@gmail.com"), repository.linksRequested)
+        assertTrue(repository.requested.isEmpty())
+        assertEquals(ForgotPasswordStep.LINK_SENT, linkViewModel.uiState.value.step)
+        assertEquals(RESEND_COOLDOWN_SECONDS, linkViewModel.uiState.value.resendSecondsLeft)
+    }
+
+    @Test
+    fun `fluxo do link volta para o e-mail e falha mostra o erro`() {
+        repository.requestResult = Result.failure(TooManyAttemptsException())
+        linkViewModel.onEmailChange("lois@gmail.com")
+        linkViewModel.onContinue()
+        assertEquals(ForgotPasswordStep.EMAIL, linkViewModel.uiState.value.step)
+        assertEquals("Muitas tentativas. Aguarde um minuto e tente de novo", linkViewModel.uiState.value.errorMessage)
+
+        repository.requestResult = Result.success(Unit)
+        linkViewModel.onContinue()
+        assertTrue(linkViewModel.onBack())
+        assertEquals(ForgotPasswordStep.EMAIL, linkViewModel.uiState.value.step)
+        assertFalse(linkViewModel.onBack())
+    }}

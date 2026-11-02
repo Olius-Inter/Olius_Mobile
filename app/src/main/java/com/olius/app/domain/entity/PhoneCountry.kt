@@ -1,10 +1,6 @@
 package com.olius.app.domain.entity
 
-/**
- * País do seletor de telefone do cadastro: código ISO (ex.: "BR"), nome em
- * português e DDI (ex.: 55). O DDI é o código do país; o DDD (11, 21...) faz
- * parte do número nacional.
- */
+/** País do seletor de telefone do cadastro: código ISO (ex.: "BR"), nome em português e DDI (ex.: 55). */
 data class PhoneCountry(
     val isoCode: String,
     val name: String,
@@ -23,7 +19,7 @@ data class PhoneCountry(
     companion object {
         private const val REGIONAL_INDICATOR_A = 0x1F1E6
 
-        /** Padrão do cadastro. Fixo aqui para não depender da lib ao abrir a tela. */
+        /** Padrão do cadastro. */
         val BRAZIL = PhoneCountry(isoCode = "BR", name = "Brasil", dialCode = 55)
     }
 }

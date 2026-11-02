@@ -12,14 +12,12 @@ import com.olius.app.domain.repository.PasswordResetTicket
 import kotlinx.coroutines.CancellationException
 import org.json.JSONObject
 
-/**
- * [PasswordResetRepository] sobre as 3 rotas públicas da Core
- * (`/auth/password-resets`, `/verify` e `/confirm`). Usa um [ApiClient] SEM
- * token: quem esqueceu a senha não tem sessão.
- * As rotas AINDA NÃO EXISTEM na Core: hoje ela responde 401 (rota fora do
- * `permitAll`), que vira [AuthUnavailableException].
- */
+/** [PasswordResetRepository] sobre as rotas públicas da Core. */
 class HttpPasswordResetRepository(private val client: ApiClient) : PasswordResetRepository {
+    override suspend fun requestResetLink(email: String): Result<Unit> = call(Step.REQUEST) {
+        client.post(ApiConfig.Main.PASSWORD_RESET_REQUESTS, JSONObject().put("email", email).toString())
+        Unit
+    }
 
     override suspend fun requestCode(email: String): Result<Unit> = call(Step.REQUEST) {
         client.post(ApiConfig.Main.PASSWORD_RESETS, JSONObject().put("email", email).toString())
@@ -51,16 +49,13 @@ class HttpPasswordResetRepository(private val client: ApiClient) : PasswordReset
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Sem rede (IOException) ou resposta fora do contrato: sobe como veio.
             Result.failure(e)
         }
 
     private fun ApiException.toResetException(step: Step): Exception = when {
-        // Rota pública: 401/404/405 só acontecem enquanto a Core não publica.
         code == HTTP_UNAUTHORIZED || code == HTTP_NOT_FOUND || code == HTTP_METHOD_NOT_ALLOWED -> AuthUnavailableException()
         code == HTTP_TOO_MANY_REQUESTS -> TooManyAttemptsException()
         code == HTTP_BAD_REQUEST && step == Step.VERIFY -> InvalidResetCodeException()
-        // No /confirm, 400 com erro na senha = regra; sem ele = resetToken vencido ou já usado.
         code == HTTP_BAD_REQUEST && step == Step.CONFIRM ->
             if (problemFields.any { it == NEW_PASSWORD_FIELD }) WeakPasswordException() else InvalidResetCodeException()
         else -> this

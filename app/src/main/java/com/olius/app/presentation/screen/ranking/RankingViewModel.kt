@@ -19,19 +19,13 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Ranking de Recicladores (ref_ranking.png / ref_ranking_2.png /
- * ref_ranking_b2b.png): ranking anual por pontos da API Redis. Cada categoria
- * é buscada uma vez e guardada em [pages]: voltar a um toggle já visto não
- * chama a API de novo. Conquistas só são buscadas quando a aba é aberta.
- */
+/** Ranking de Recicladores: ranking anual por pontos da API Redis. */
 class RankingViewModel(
     private val repository: RankingRepository = AppContainer.rankingRepository,
     profileType: ProfileType = AppContainer.currentProfileType(),
     private val zone: ZoneId = ZoneId.systemDefault()
 ) : ViewModel() {
-
-    /** Toggle abre no público da pessoa (Figma: B2B em "Estabelecimento", B2C em "Cidadão"). */
+    /** Toggle abre no público da pessoa. */
     private val ownCategory = profileType.rankingCategory
 
     private val _uiState = MutableStateFlow(RankingUiState(category = ownCategory))
@@ -122,7 +116,6 @@ class RankingViewModel(
     }
 
     private companion object {
-        /** Textos da tela "Mobile / Erro" do Figma. */
         const val RANKING_ERROR = "Sem conexão"
         /** API no ar, mas sem ranking publicado ou com o banco indisponível (HTTP 503). */
         const val RANKING_UNAVAILABLE = "Ranking indisponível no momento"

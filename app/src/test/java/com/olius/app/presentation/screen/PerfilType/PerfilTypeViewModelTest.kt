@@ -36,7 +36,6 @@ import org.junit.Test
 import java.io.IOException
 
 class PerfilTypeViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -86,8 +85,6 @@ class PerfilTypeViewModelTest {
         viewModel.updateRegisterCep("01001-000")
         viewModel.updateRegisterNumber("10")
     }
-
-    // ---- Navegação entre os cards -------------------------------------------
 
     @Test
     fun `fluxo de onboarding avanca da intro ate o login`() {
@@ -143,8 +140,6 @@ class PerfilTypeViewModelTest {
         assertTrue(state.registerFieldErrors.isEmpty())
     }
 
-    // ---- Campos ---------------------------------------------------------------
-
     @Test
     fun `campos de login atualizam o estado`() {
         fillLogin("x@y.com", "senha1")
@@ -158,7 +153,6 @@ class PerfilTypeViewModelTest {
     @Test
     fun `campos de cadastro atualizam o estado`() {
         viewModel.updateRegisterName("Bia Souza")
-        viewModel.updateRegisterBirthDate("01/02/2000")
         viewModel.updateRegisterPhone("11999999999")
         viewModel.updateRegisterEmail("bia@y.com")
         viewModel.updateRegisterPassword("senha2")
@@ -166,7 +160,6 @@ class PerfilTypeViewModelTest {
         viewModel.updateRegisterComplement("Sala 2")
 
         assertEquals("Bia Souza", state.registerName)
-        assertEquals("01/02/2000", state.registerBirthDate)
         assertEquals("11999999999", state.registerPhone)
         assertEquals("bia@y.com", state.registerEmail)
         assertEquals("senha2", state.registerPassword)
@@ -196,8 +189,6 @@ class PerfilTypeViewModelTest {
         assertTrue(state.passwordChecklist.all { it.second })
     }
 
-    // ---- Telefone com DDI ------------------------------------------------------
-
     private fun country(iso: String) = viewModel.phoneCountries.first { it.isoCode == iso }
 
     @Test
@@ -214,7 +205,7 @@ class PerfilTypeViewModelTest {
     @Test
     fun `trocar o pais muda DDI, mascara e validacao`() {
         viewModel.updateRegisterPhone("2015550123")
-        assertNull(state.registerPhoneE164) // 10 dígitos não é celular/fixo válido no Brasil
+        assertNull(state.registerPhoneE164)
 
         viewModel.selectPhoneCountry(country("US"))
 
@@ -244,11 +235,9 @@ class PerfilTypeViewModelTest {
         assertEquals("Telefone inválido para Portugal", state.registerPhoneError)
 
         viewModel.updateRegisterPhone("912345678")
-        assertNull(state.registerPhoneError) // digitar de novo limpa o erro
+        assertNull(state.registerPhoneError)
         assertEquals("351912345678", state.registerPhoneE164)
     }
-
-    // ---- Validação ------------------------------------------------------------
 
     @Test
     fun `login valida e-mail e senha antes de chamar a Core`() {
@@ -298,7 +287,7 @@ class PerfilTypeViewModelTest {
         assertNull(repository.lastRegistration)
 
         viewModel.updateRegisterName("Bia")
-        assertNull(state.fieldError(RegisterField.NAME)) // digitar apaga o erro do campo
+        assertNull(state.fieldError(RegisterField.NAME))
     }
 
     @Test
@@ -317,8 +306,6 @@ class PerfilTypeViewModelTest {
         assertEquals("Digite o número", state.fieldError(RegisterField.NUMBER))
         assertNull(repository.lastRegistration)
     }
-
-    // ---- Tipos de estabelecimento e CEP ------------------------------------------
 
     @Test
     fun `tipos de estabelecimento carregam uma vez ao abrir o cadastro`() {
@@ -372,8 +359,6 @@ class PerfilTypeViewModelTest {
         assertEquals(CepStatus.NETWORK_ERROR, state.cepStatus)
     }
 
-    // ---- Login / cadastro / Google ------------------------------------------
-
     @Test
     fun `login com sucesso envia evento de navegar pra Home`() = runTest {
         fillLogin()
@@ -391,7 +376,6 @@ class PerfilTypeViewModelTest {
     fun `cadastro de cidadao manda CPF e telefone e vai pra Home`() = runTest {
         fillCitizen()
         viewModel.updateRegisterPhone("11999998888")
-        viewModel.updateRegisterBirthDate("01/02/2000")
 
         viewModel.navigationEvents.test {
             viewModel.register()
@@ -530,7 +514,7 @@ class PerfilTypeViewModelTest {
 
         assertEquals(OnboardingStep.LOGIN, state.step)
         assertNull(state.googleAccount)
-        viewModel.completeGoogleProfile() // sem conta, não faz nada
+        viewModel.completeGoogleProfile()
         assertNull(repository.lastRegistration)
     }
 

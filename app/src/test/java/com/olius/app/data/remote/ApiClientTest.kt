@@ -14,7 +14,6 @@ import java.net.InetSocketAddress
 
 /** Sobe um servidor HTTP local (JDK) para testar o [ApiClient] de ponta a ponta. */
 class ApiClientTest {
-
     private lateinit var server: HttpServer
     private var status = 200
     private var responseBody = """{"ok":true}"""

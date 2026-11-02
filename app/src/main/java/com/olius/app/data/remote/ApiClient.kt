@@ -14,12 +14,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/**
- * Resposta HTTP fora da faixa 2xx. [code] permite tratar 404/422 como sinal, não erro genérico.
- * [responseBody] é o corpo da resposta (na Core, um ProblemDetail com `code`).
- */
+/** Resposta HTTP fora da faixa 2xx. */
 class ApiException(val code: Int, val responseBody: String) : Exception("HTTP $code: $responseBody") {
-
     /** `code` do ProblemDetail da Core (ex.: "REGISTRATION_CONFLICT", "PROFILE_REQUIRED"); null se não houver. */
     val problemCode: String?
         get() = runCatching { JSONObject(responseBody).optString("code").ifEmpty { null } }.getOrNull()
@@ -32,27 +28,15 @@ class ApiException(val code: Int, val responseBody: String) : Exception("HTTP $c
         }.getOrDefault(emptyList())
 }
 
-/**
- * Cliente HTTP mínimo sobre [HttpURLConnection] (já vem no Android): sem
- * Retrofit/OkHttp, o projeto não ganha dependências novas nem precisa
- * regenerar o `verification-metadata.xml`. Devolve o corpo como String; quem
- * chama converte com `org.json`.
- *
- * [tokenProvider] devolve o token enviado como `Authorization: Bearer`
- * (na Core, o access token da sessão). [onUnauthorized] recebe o token que
- * levou 401 e devolve um novo (refresh) ou null: com token novo, a chamada é
- * repetida UMA vez; sem ele, o 401 sobe para quem chamou.
- * [ioDispatcher] é injetável para os testes. [readTimeoutMs]: o chat usa 60 s.
- * Cancelar a corrotina (ex.: "Parar resposta") fecha a conexão na hora.
- */
+/** Cliente HTTP mínimo sobre [HttpURLConnection] (já vem no Android). */
 class ApiClient(
     private val baseUrl: String,
     private val tokenProvider: suspend () -> String? = { null },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val onUnauthorized: (suspend (rejectedToken: String) -> String?)? = null,
-    private val readTimeoutMs: Int = ApiConfig.READ_TIMEOUT_MS
+    private val readTimeoutMs: Int = ApiConfig.READ_TIMEOUT_MS,
+    private val requireToken: Boolean = false
 ) {
-
     suspend fun get(path: String, query: Map<String, String?> = emptyMap()): String =
         request("GET", path, query, body = null)
 
@@ -60,10 +44,7 @@ class ApiClient(
     suspend fun post(path: String, jsonBody: String, headers: Map<String, String> = emptyMap()): String =
         request("POST", path, emptyMap(), jsonBody, headers)
 
-    /**
-     * PATCH (ex.: "Editar Perfil"). O HttpURLConnection do Android aceita PATCH;
-     * o da JVM pura (testes) não: lá dá `ProtocolException`.
-     */
+    /** PATCH (ex.: "Editar Perfil"). */
     suspend fun patch(path: String, jsonBody: String): String =
         request("PATCH", path, emptyMap(), jsonBody)
 
@@ -76,6 +57,7 @@ class ApiClient(
         headers: Map<String, String> = emptyMap()
     ): String {
         val token = tokenProvider()
+        if (requireToken && token == null) throw ApiException(HTTP_UNAUTHORIZED, "")
         try {
             return execute(method, path, query, body, headers, token)
         } catch (e: ApiException) {
@@ -102,7 +84,6 @@ class ApiClient(
             token?.let { setRequestProperty("Authorization", "Bearer $it") }
             headers.forEach { (name, value) -> setRequestProperty(name, value) }
         }
-        // A leitura bloqueada não para com o cancelamento; fechar a conexão destrava na hora.
         val closeOnCancel = launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 awaitCancellation()
@@ -125,7 +106,6 @@ class ApiClient(
                 text
             }
         } catch (e: IOException) {
-            // Conexão fechada pelo cancelamento: sobe como cancelamento, não como erro de rede.
             ensureActive()
             throw e
         } finally {

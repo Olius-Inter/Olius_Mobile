@@ -14,21 +14,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 
-/**
- * Sessão da Core no aparelho (docs/identidade-seguranca.md da Core):
- *
- * - access token (15 min) SÓ na memória; refresh token no [store] (cifrado).
- * - Um refresh por vez ([refreshMutex]): a Core revoga a sessão se o mesmo
- *   refresh for usado duas vezes. Quem chega enquanto outro renova espera e
- *   usa o token novo.
- * - O refresh novo é gravado ANTES de liberar o token para qualquer chamada.
- * - Refresh recusado (400/401) → sessão encerrada: limpa tudo e avisa por
- *   [sessionExpired] (a navegação volta para o login). Sem rede ou 5xx → a
- *   chamada falha, mas a sessão continua.
- *
- * [scope] roda o aviso de logout à Core sem segurar a tela. [onSessionEnded]
- * limpa o resto da sessão (ex.: o perfil em cache).
- */
+/** Sessão da Core no aparelho: - access token (15 min) SÓ na memória; refresh token no [store] (cifrado). */
 class CoreSessionRepository(
     private val api: CoreAuthApi,
     private val store: RefreshTokenStore,
@@ -36,19 +22,15 @@ class CoreSessionRepository(
     private val clock: () -> Long = System::currentTimeMillis,
     private val onSessionEnded: () -> Unit = {}
 ) {
-
     private class AccessToken(val value: String, val expiresAtMillis: Long)
 
     private val refreshMutex = Mutex()
 
-    // Protege access + store + generation juntos (login, logout e fim do refresh).
     private val lock = Any()
 
     @Volatile
     private var access: AccessToken? = null
 
-    // Muda a cada login/logout: um refresh que termina depois de um logout não
-    // pode gravar o token de volta.
     @Volatile
     private var generation = 0L
 
@@ -69,10 +51,7 @@ class CoreSessionRepository(
         }
     }
 
-    /**
-     * Access token para o `Authorization: Bearer`. Vencido (ou app recém-aberto)
-     * → renova antes. null = não há sessão.
-     */
+    /** Access token para o `Authorization: Bearer`. */
     suspend fun accessToken(): String? {
         access?.takeIf { it.isFresh() }?.let { return it.value }
         if (store.load() == null) return null
@@ -83,7 +62,6 @@ class CoreSessionRepository(
     suspend fun onUnauthorized(rejected: String): String? = refresh(rejected)
 
     private suspend fun refresh(rejected: String?): String? = refreshMutex.withLock {
-        // Outra chamada já renovou enquanto esta esperava: só usa o token novo.
         access?.takeIf { it.value != rejected && it.isFresh() }?.let { return it.value }
         val (saved, startedAt) = synchronized(lock) { store.load() to generation }
         if (saved == null) return null
@@ -104,11 +82,6 @@ class CoreSessionRepository(
         tokens.accessToken
     }
 
-    /**
-     * Logout: apaga a sessão do aparelho na hora e, em segundo plano, chama
-     * POST /auth/mobile/logout. Se o access já venceu, renova uma última vez
-     * só para ter o Bearer do logout. Falha de rede aqui não volta a sessão.
-     */
     fun signOut() {
         val (saved, bearer) = synchronized(lock) {
             val current = store.load() to access?.takeIf { it.isFresh() }?.value
@@ -140,7 +113,6 @@ class CoreSessionRepository(
         _sessionExpired.tryEmit(Unit)
     }
 
-    // Grava o refresh primeiro (síncrono); só depois o access fica disponível.
     private fun persist(tokens: MobileTokens) {
         store.save(StoredRefreshToken(tokens.refreshToken, tokens.refreshExpiresAt?.let(::parseInstant)))
         access = AccessToken(tokens.accessToken, clock() + tokens.accessExpiresInSeconds * MILLIS_PER_SECOND)

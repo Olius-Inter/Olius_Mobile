@@ -60,13 +60,10 @@ import com.olius.app.presentation.theme.OliusVerdeSeloTexto
 import com.olius.app.presentation.theme.OliusVermelhoFechado
 import com.olius.app.presentation.theme.OliusSuperficie
 
-/** Uma aba com ícone (Figma: "Meus Dados | Solicitações" e "Pontos PEV | Dicas"). */
+/** Uma aba com ícone. */
 data class OliusIconTab<T>(val value: T, val label: String, val iconRes: Int)
 
-/**
- * Abas com ícone num trilho cinza, a selecionada em branco. O ícone não
- * selecionado fica acinzentado (o Figma usa a mesma arte com cor apagada).
- */
+/** Abas com ícone num trilho cinza, a selecionada em branco. */
 @Composable
 fun <T> OliusIconTabs(tabs: List<OliusIconTab<T>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
     Row(
@@ -104,15 +101,10 @@ fun <T> OliusIconTabs(tabs: List<OliusIconTab<T>>, selected: T, onSelect: (T) ->
     }
 }
 
-/**
- * Conteúdo da tela "Sem conexão" (Figma "Mobile / Erro", frame 391 x 865).
- * Medidas do Figma: título em y=123, texto 276 dp, ilustração de 150 dp
- * centralizada e botão de 300 x 43 dp. Quem usa é a ConnectionErrorScreen.
- */
+/** Conteúdo da tela "Sem conexão". */
 @Composable
 fun NoConnectionContent(onBackToStart: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth()) {
-        // 123 dp do topo do frame menos os ~44 dp da status bar do Figma.
         Spacer(Modifier.height(79.dp))
         Text("Sem conexão", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarrom, lineHeight = 32.sp)
         Spacer(Modifier.height(6.dp))
@@ -140,11 +132,6 @@ fun NoConnectionContent(onBackToStart: () -> Unit, modifier: Modifier = Modifier
     }
 }
 
-/**
- * Ilustração do Figma: círculo amarelo de 150 dp com um plugue desconectado
- * (dois pinos de 5 x 15 dp) e o fio descendo até perto do botão. Desenhada
- * em Canvas, em dp, numa área de 150 x 244 dp (y 306 a 550 no Figma).
- */
 @Composable
 private fun UnpluggedIllustration(modifier: Modifier = Modifier) {
     Canvas(
@@ -156,19 +143,16 @@ private fun UnpluggedIllustration(modifier: Modifier = Modifier) {
         val center = 75f * u
         drawCircle(color = OliusAmarelo, radius = center, center = Offset(center, center))
 
-        // Faíscas acima dos pinos: o "desligado". Marrom fixo: fica sobre o amarelo nos dois temas.
         val spark = 3f * u
         drawLine(OliusTituloMarromClaro, Offset(center, 24f * u), Offset(center, 36f * u), spark, StrokeCap.Round)
         drawLine(OliusTituloMarromClaro, Offset(52f * u, 30f * u), Offset(58f * u, 40f * u), spark, StrokeCap.Round)
         drawLine(OliusTituloMarromClaro, Offset(98f * u, 30f * u), Offset(92f * u, 40f * u), spark, StrokeCap.Round)
 
-        // Pinos (5 x 15 dp) + corpo do plugue + pescoço.
         drawRoundRect(OliusTituloMarromClaro, Offset(60.5f * u, 50f * u), Size(5f * u, 15f * u), CornerRadius(1.5f * u))
         drawRoundRect(OliusTituloMarromClaro, Offset(84.5f * u, 50f * u), Size(5f * u, 15f * u), CornerRadius(1.5f * u))
         drawRoundRect(OliusTituloMarromClaro, Offset(55f * u, 65f * u), Size(40f * u, 32f * u), CornerRadius(7f * u))
         drawRoundRect(OliusTituloMarromClaro, Offset(68f * u, 96f * u), Size(14f * u, 11f * u), CornerRadius(3f * u))
 
-        // Fio: sai do plugue, cruza a borda do círculo e desce em "S".
         val cord = Path().apply {
             moveTo(center, 106f * u)
             lineTo(center, 140f * u)
@@ -197,7 +181,7 @@ fun CollectionStatusChip(status: CollectionStatus, modifier: Modifier = Modifier
     }
 }
 
-/** Card "Pontos PEV" (Figma "Card - Pontos PEV Disponível/Indisponível - B2C"). */
+/** Card "Pontos PEV". */
 @Composable
 fun PevPointCard(point: CollectionPoint, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     Surface(
@@ -208,7 +192,6 @@ fun PevPointCard(point: CollectionPoint, modifier: Modifier = Modifier, onClick:
         color = OliusSuperficie,
         border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
-        // Sem horário (a Core ainda não tem o campo) o ponto não aparece como fechado.
         val open = point.isOpenNow || point.openingHours.isBlank()
         Row(Modifier.padding(horizontal = 15.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(

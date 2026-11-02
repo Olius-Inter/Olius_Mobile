@@ -3,9 +3,8 @@ package com.olius.app.domain.repository
 import com.olius.app.domain.entity.CitizenHistory
 import com.olius.app.domain.entity.EstablishmentHistory
 
-/** Aba Histórico. Uma chamada por tela: indicadores + lista juntos. */
+/** Aba Histórico. */
 interface HistoryRepository {
-
     /** B2B: "Histórico de Coletas" (collection_request / collection). */
     suspend fun getEstablishmentHistory(): Result<EstablishmentHistory>
 

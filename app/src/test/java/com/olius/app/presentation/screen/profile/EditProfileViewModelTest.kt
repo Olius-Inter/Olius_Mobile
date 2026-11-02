@@ -21,7 +21,6 @@ import org.junit.Test
 import java.io.IOException
 
 class EditProfileViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

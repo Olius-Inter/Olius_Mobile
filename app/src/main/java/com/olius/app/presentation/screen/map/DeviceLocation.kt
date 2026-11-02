@@ -25,12 +25,7 @@ fun hasLocationPermission(context: Context): Boolean = LOCATION_PERMISSIONS.any 
     ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
 }
 
-/**
- * Posição atual pelo GPS/rede (requisito "Utilizar o GPS do dispositivo").
- * Usa o [LocationManager] do Android, então não precisa do Google Play
- * Services. Devolve a última posição conhecida se a leitura nova demorar
- * mais de 10 s, ou null sem permissão/sem provedor ligado.
- */
+/** Posição atual pelo GPS/rede (requisito "Utilizar o GPS do dispositivo"). */
 @SuppressLint("MissingPermission") // checado em hasLocationPermission
 suspend fun currentDeviceLocation(context: Context): Location? {
     if (!hasLocationPermission(context)) return null
@@ -49,7 +44,6 @@ suspend fun currentDeviceLocation(context: Context): Location? {
             continuation.invokeOnCancellation { cancellation.cancel() }
             LocationManagerCompat.getCurrentLocation(
                 manager,
-                // Rede responde mais rápido em ambiente fechado; GPS é o fallback.
                 if (LocationManager.NETWORK_PROVIDER in providers) LocationManager.NETWORK_PROVIDER else providers.first(),
                 cancellation,
                 ContextCompat.getMainExecutor(context)

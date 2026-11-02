@@ -9,13 +9,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-/** Geocodificação do próprio Android (sem chave de API). Sem serviço no aparelho → null. */
+/** Geocodificação do próprio Android (sem chave de API). */
 class AndroidAddressGeocoder(
     private val context: Context,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : AddressGeocoder {
-
-    // A versão com callback só existe a partir da API 33; esta roda numa thread de IO.
     @Suppress("DEPRECATION")
     override suspend fun locate(query: String): GeoPoint? = withContext(ioDispatcher) {
         if (!Geocoder.isPresent()) return@withContext null

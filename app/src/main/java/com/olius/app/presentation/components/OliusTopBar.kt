@@ -25,12 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.olius.app.R
 import com.olius.app.presentation.theme.OliusAmarelo
 
-/**
- * Estado + ações do header compartilhado por todas as abas (logo, sino de
- * notificações e avatar). Quem cria é o `MainScaffoldScreen`, a partir do
- * `HomeViewModel` — assim o sino/avatar abrem os mesmos bottom sheets em
- * qualquer aba, e a bolinha de "não lida" fica sincronizada.
- */
+/** Estado + ações do header compartilhado por todas as abas (logo, sino de notificações e avatar). */
 data class OliusTopBarState(
     val hasUnreadNotifications: Boolean = false,
     val onNotificationsClick: () -> Unit = {},
@@ -60,11 +55,6 @@ fun OliusTopBar(state: OliusTopBarState, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * Avatar do usuário: placeholder com ícone, igual referência (círculo amarelo).
- * Ainda não há foto real — `HomeUiState.profileImageUrl` só será preenchido
- * quando existir integração com o backend; aí a imagem entra aqui (ex.: Coil).
- */
 @Composable
 private fun ProfileAvatar(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(

@@ -18,7 +18,6 @@ import org.junit.Test
 import java.io.IOException
 
 class HistoryViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

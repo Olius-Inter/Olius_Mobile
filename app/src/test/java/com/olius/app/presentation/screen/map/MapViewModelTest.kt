@@ -1,5 +1,6 @@
 package com.olius.app.presentation.screen.map
 
+import com.olius.app.data.repository.MockCollectionPointRepository
 import com.olius.app.MainDispatcherRule
 import com.olius.app.domain.entity.CollectionPointType
 import com.olius.app.domain.entity.MapBounds
@@ -14,7 +15,6 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 class MapViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -29,9 +29,7 @@ class MapViewModelTest {
     private val store = FakePromptStore()
 
     private fun viewModel(currentTime: Long = now) =
-        MapViewModel(promptStore = store, now = { currentTime }, searchDebounceMillis = 0)
-
-    // ---- Aviso "Vire um ponto de Coleta" ------------------------------------
+        MapViewModel(promptStore = store, now = { currentTime }, repository = MockCollectionPointRepository(), searchDebounceMillis = 0)
 
     @Test
     fun `aviso aparece na primeira vez e marca quando apareceu`() {
@@ -98,14 +96,11 @@ class MapViewModelTest {
         assertTrue(vm.uiState.value.showBecomeCollectorBanner)
     }
 
-    // ---- Pontos, filtros e busca ----------------------------------------------
-
     @Test
     fun `lista mostra so PEVs ordenados pela distancia`() {
         val points = viewModel().uiState.value.visiblePoints
 
         assertEquals(MAP_FILTER_TYPES.toSet(), points.map { it.type }.toSet())
-        // Sem GPS, ponto sem distância conhecida vai para o fim da lista.
         assertEquals(points.sortedWith(compareBy(nullsLast()) { it.distanceKm }), points)
     }
 
@@ -122,7 +117,6 @@ class MapViewModelTest {
     @Test
     fun `estabelecimento que nao e PEV some do mapa e nao pode ser ligado`() {
         val vm = viewModel()
-        // O mock tem um estabelecimento sem PEV na área inicial (Padaria Pão Quente).
         assertTrue(vm.uiState.value.points.any { it.type == CollectionPointType.ESTABLISHMENT })
 
         vm.onToggleType(CollectionPointType.ESTABLISHMENT)
@@ -194,13 +188,10 @@ class MapViewModelTest {
         assertNotNull(vm.uiState.value.detailsError)
     }
 
-    // ---- Mapa real: área visível, GPS e autocomplete ---------------------------
-
     @Test
     fun `mapa carrega so os pins da area visivel`() {
         val vm = viewModel()
 
-        // Só o centro de São Paulo (Sé / Liberdade), sem Osasco.
         vm.onViewportChanged(MapBounds(south = -23.565, west = -46.645, north = -23.545, east = -46.625))
 
         assertEquals(setOf("3", "4"), vm.uiState.value.points.map { it.id }.toSet())
@@ -210,7 +201,7 @@ class MapViewModelTest {
     fun `gps calcula a distancia e ordena do mais perto para o mais longe`() {
         val vm = viewModel()
 
-        vm.onUserLocation(-23.5503, -46.6339) // em cima do Ecoponto Sé
+        vm.onUserLocation(-23.5503, -46.6339)
 
         val points = vm.uiState.value.visiblePoints
         assertEquals("3", points.first().id)
@@ -257,7 +248,7 @@ class MapViewModelTest {
 
     @Test
     fun `coletor nao ve o aviso nem o botao Vire Coletor`() {
-        val state = MapViewModel(promptStore = store, now = { now }, isCollector = true, searchDebounceMillis = 0).uiState.value
+        val state = MapViewModel(promptStore = store, now = { now }, isCollector = true, repository = MockCollectionPointRepository(), searchDebounceMillis = 0).uiState.value
 
         assertFalse(state.showBecomeCollectorBanner)
         assertFalse(state.canBecomeCollector)

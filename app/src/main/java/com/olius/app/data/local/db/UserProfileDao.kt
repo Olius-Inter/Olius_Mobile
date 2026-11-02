@@ -7,7 +7,6 @@ import androidx.room.Upsert
 
 @Dao
 interface UserProfileDao {
-
     @Query("SELECT * FROM user_profile LIMIT 1")
     fun load(): UserProfileEntity?
 

@@ -20,7 +20,6 @@ import org.junit.Test
 import java.io.IOException
 
 class ProfileViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

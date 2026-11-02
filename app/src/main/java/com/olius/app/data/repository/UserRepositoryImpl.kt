@@ -14,23 +14,17 @@ import com.olius.app.domain.entity.TooManyAttemptsException
 import com.olius.app.domain.repository.UserRepository
 import kotlinx.coroutines.CancellationException
 
-/**
- * Implementação de [UserRepository] com a Core (sem Firebase): login,
- * cadastro e Google devolvem os tokens da Core, que vão para o [session].
- * Os erros HTTP viram as exceções do domínio (AuthErrors.kt).
- */
+/** Implementação de [UserRepository] com a Core (sem Firebase). */
 class UserRepositoryImpl(
     private val api: CoreAuthApi,
     private val session: CoreSessionRepository
 ) : UserRepository {
-
     override suspend fun signInWithEmail(email: String, password: String): Result<Unit> = authCall {
         session.start(api.login(email.trim(), password))
     }
 
     override suspend fun register(registration: AccountRegistration, password: String): Result<Unit> = authCall {
         api.register(registration, password)
-        // O cadastro só devolve {id, userType}: a sessão vem do login com a mesma senha.
         session.start(api.login(registration.email, password))
     }
 
@@ -56,7 +50,6 @@ class UserRepositoryImpl(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Sem rede (IOException) ou resposta fora do contrato: sobe como veio.
             Result.failure(e)
         }
 

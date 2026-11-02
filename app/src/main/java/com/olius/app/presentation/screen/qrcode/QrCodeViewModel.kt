@@ -13,19 +13,15 @@ import kotlinx.coroutines.launch
 
 data class QrCodeUiState(
     val isLoading: Boolean = true,
-    /** Texto codificado no QR (o qrToken exato). null = token indisponível. */
+    /** Texto codificado no QR (o qrToken exato). */
     val content: String? = null
 )
 
-/**
- * Tela "Identifique-se". O token já vem salvo no perfil (GET /users/me →
- * qrToken); só chama a API se ele ainda não estiver no aparelho.
- */
+/** Tela "Identifique-se". */
 class QrCodeViewModel(
     private val profiles: UserProfileRepository = AppContainer.userProfileRepository,
     private val buildContent: BuildQrCodeContentUseCase = BuildQrCodeContentUseCase()
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(QrCodeUiState())
     val uiState: StateFlow<QrCodeUiState> = _uiState.asStateFlow()
 

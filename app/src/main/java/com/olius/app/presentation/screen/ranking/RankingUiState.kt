@@ -23,7 +23,7 @@ data class RankingUiState(
     val isAchievementsLoading: Boolean = false,
     val achievementsError: String? = null
 ) {
-    /** As três primeiras linhas — o pódio. Com empate, duas podem ter a mesma posição. */
+    /** As três primeiras linhas — o pódio. */
     val podium: List<RankingEntry>
         get() = entries.take(3)
 

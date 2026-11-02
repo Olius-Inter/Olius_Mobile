@@ -6,7 +6,6 @@ import org.junit.Test
 
 /** As base URLs vêm do local.properties (BuildConfig) e sempre terminam com "/". */
 class ApiConfigTest {
-
     @Test
     fun `withTrailingSlash adds the slash only when missing`() {
         assertEquals("http://host:8080/", ApiConfig.withTrailingSlash("http://host:8080"))

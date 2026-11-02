@@ -11,7 +11,4 @@ data class Establishment (
     val address: String
 
 ){
-     
-
-
 }

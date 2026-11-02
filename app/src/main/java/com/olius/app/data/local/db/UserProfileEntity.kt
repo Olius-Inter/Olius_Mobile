@@ -5,10 +5,7 @@ import androidx.room.PrimaryKey
 import com.olius.app.domain.entity.ProfileType
 import com.olius.app.domain.entity.UserProfile
 
-/**
- * Tabela `user_profile` do SQLite do app: o último GET /users/me da conta
- * logada (uma linha só). É cache: a Core continua sendo a dona dos dados.
- */
+/** Tabela `user_profile` do SQLite do app: o último GET /users/me da conta logada (uma linha só). */
 @Entity(tableName = "user_profile")
 data class UserProfileEntity(
     @PrimaryKey val id: String,

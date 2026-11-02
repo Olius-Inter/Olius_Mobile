@@ -7,7 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,15 +26,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.R
 import com.olius.app.presentation.theme.DecorativeBackground
 import com.olius.app.presentation.theme.OliusAmarelo
@@ -56,11 +53,7 @@ import com.olius.app.presentation.theme.OliusCampoBorda
 import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 
-/**
- * Recuperar senha (ref_recuperar_senha.png / ref_recuperar_senha_nova.png):
- * e-mail -> código de 6 dígitos -> nova senha + confirmar senha. O card tem
- * a mesma altura dos cards de login/cadastro ([AUTH_SECONDARY_CARD_HEIGHT]).
- */
+/** Recuperar senha. */
 @Composable
 fun ForgotPasswordScreen(
     onBack: () -> Unit,
@@ -87,18 +80,12 @@ fun ForgotPasswordScreen(
     Box(Modifier.fillMaxSize()) {
         DecorativeBackground(isRow = true)
         Column(Modifier.fillMaxSize()) {
-            Row(
+            OliusBackButton(
+                onClick = handleBack,
                 modifier = Modifier
                     .statusBarsPadding()
                     .padding(start = 16.dp, top = 16.dp)
-                    .clickable(onClick = handleBack)
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = OliusTextoPrimario, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Voltar", fontSize = 14.sp, color = OliusTextoPrimario)
-            }
+            )
             Spacer(Modifier.weight(1f))
             OliusLogoRow(Modifier.align(Alignment.CenterHorizontally))
             Spacer(Modifier.height(HEADER_TO_CARD_GAP))
@@ -111,7 +98,6 @@ fun ForgotPasswordScreen(
                 },
                 label = "forgotPasswordStep"
             ) { step ->
-                // A nova senha tem a lista de regras: só esse passo rola, se faltar altura.
                 AuthCardScaffold(
                     modifier = Modifier.height(AUTH_SECONDARY_CARD_HEIGHT),
                     scrollable = step == ForgotPasswordStep.NEW_PASSWORD
@@ -119,7 +105,8 @@ fun ForgotPasswordScreen(
                     Text("Recuperar senha", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = OliusTextoPrimario)
                     Spacer(Modifier.height(8.dp))
                     when (step) {
-                        ForgotPasswordStep.EMAIL -> EmailStep(state, viewModel::onEmailChange)
+                        ForgotPasswordStep.EMAIL -> EmailStep(state, viewModel.useCode, viewModel::onEmailChange)
+                        ForgotPasswordStep.LINK_SENT -> LinkSentStep(state, viewModel::onResendCode)
                         ForgotPasswordStep.CODE -> CodeStep(state, viewModel::onCodeChange, viewModel::onResendCode)
                         ForgotPasswordStep.NEW_PASSWORD -> NewPasswordStep(
                             state = state,
@@ -132,9 +119,14 @@ fun ForgotPasswordScreen(
                     Spacer(Modifier.height(12.dp))
                     AuthErrorMessage(message = state.errorMessage)
                     Spacer(Modifier.height(40.dp))
+                    val linkSent = step == ForgotPasswordStep.LINK_SENT
                     ContinuarButton(
-                        text = if (state.isLoading) "Aguarde..." else "Continuar",
-                        onClick = viewModel::onContinue,
+                        text = when {
+                            state.isLoading -> "Aguarde..."
+                            linkSent -> "Voltar ao login"
+                            else -> "Continuar"
+                        },
+                        onClick = if (linkSent) onBack else viewModel::onContinue,
                         enabled = !state.isLoading
                     )
                 }
@@ -169,8 +161,11 @@ private fun StepSubtitle(text: String) {
 }
 
 @Composable
-private fun ColumnScope.EmailStep(state: ForgotPasswordUiState, onEmailChange: (String) -> Unit) {
-    StepSubtitle("Digite o e-mail da sua conta. Vamos enviar um código de 6 dígitos para você trocar a senha.")
+private fun ColumnScope.EmailStep(state: ForgotPasswordUiState, useCode: Boolean, onEmailChange: (String) -> Unit) {
+    StepSubtitle(
+        if (useCode) "Digite o e-mail da sua conta. Vamos enviar um código de 6 dígitos para você trocar a senha."
+        else "Digite o e-mail da sua conta. Vamos enviar um link para você criar uma nova senha."
+    )
     Spacer(Modifier.height(20.dp))
     OliusTextField(
         value = state.email,
@@ -183,7 +178,6 @@ private fun ColumnScope.EmailStep(state: ForgotPasswordUiState, onEmailChange: (
 
 @Composable
 private fun ColumnScope.CodeStep(state: ForgotPasswordUiState, onCodeChange: (String) -> Unit, onResend: () -> Unit) {
-    // Mesmo texto com e sem conta: a tela não revela se o e-mail está cadastrado.
     StepSubtitle("Se houver uma conta com ${state.email}, enviamos um código.\nDigite o código de 6 dígitos abaixo para trocar a senha")
     Spacer(Modifier.height(48.dp))
     CodeInput(code = state.code, onCodeChange = onCodeChange)
@@ -195,28 +189,52 @@ private fun ColumnScope.CodeStep(state: ForgotPasswordUiState, onCodeChange: (St
     }
 }
 
+/** Link enviado (fluxo da Core): a nova senha é criada na página que o link abre. */
+@Composable
+private fun ColumnScope.LinkSentStep(state: ForgotPasswordUiState, onResend: () -> Unit) {
+    StepSubtitle(
+        "Se houver uma conta com ${state.email}, enviamos um link para criar uma nova senha.\n" +
+            "Abra o e-mail, toque no link e depois entre no app com a nova senha. Não achou? Veja o spam."
+    )
+    Spacer(Modifier.height(32.dp))
+    ResendCodeLink(
+        secondsLeft = state.resendSecondsLeft,
+        enabled = !state.isLoading,
+        onResend = onResend,
+        label = "Reenviar e-mail",
+        modifier = Modifier.align(Alignment.CenterHorizontally)
+    )
+    state.infoMessage?.let {
+        Spacer(Modifier.height(6.dp))
+        Text(it, fontSize = 12.sp, color = OliusTextoSecundario, textAlign = TextAlign.Center)
+    }
+}
+
 /** "Reenviar código": cinza com a contagem durante a espera, amarelo quando libera. */
 @Composable
-private fun ResendCodeLink(secondsLeft: Int, enabled: Boolean, onResend: () -> Unit) {
+private fun ResendCodeLink(
+    secondsLeft: Int,
+    enabled: Boolean,
+    onResend: () -> Unit,
+    label: String = "Reenviar código",
+    modifier: Modifier = Modifier
+) {
     if (secondsLeft > 0) {
-        Text("Reenviar código em 0:%02d".format(secondsLeft), fontSize = 13.sp, color = OliusTextoSecundario)
+        Text("$label em 0:%02d".format(secondsLeft), fontSize = 13.sp, color = OliusTextoSecundario, modifier = modifier)
     } else {
         Text(
-            "Reenviar código",
+            label,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = OliusAmarelo,
-            modifier = Modifier
+            modifier = modifier
                 .clickable(enabled = enabled, onClick = onResend)
                 .padding(4.dp)
         )
     }
 }
 
-/**
- * Campo do código: um `BasicTextField` invisível que desenha 6 traços
- * (ref_recuperar_senha.png) com os dígitos já digitados em cima de cada um.
- */
+/** Campo do código: um `BasicTextField` invisível que desenha 6 traços com os dígitos já digitados em cima de cada um. */
 @Composable
 private fun ColumnScope.CodeInput(code: String, onCodeChange: (String) -> Unit) {
     BasicTextField(
@@ -251,7 +269,6 @@ private fun ColumnScope.CodeInput(code: String, onCodeChange: (String) -> Unit) 
                         }
                     }
                 }
-                // O campo de verdade fica por baixo, transparente — só recebe o toque/teclado.
                 Box(Modifier.matchParentSize()) { innerField() }
             }
         }

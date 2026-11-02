@@ -16,7 +16,6 @@ import org.json.JSONObject
 
 /** O perfil fica salvo no [store] nas duas versões; só muda de onde ele vem. */
 abstract class StoredUserProfileRepository(protected val store: SessionStore) : UserProfileRepository {
-
     override fun cachedProfile(): UserProfile? = store.load()
 
     override fun saveLocal(profile: UserProfile) = store.save(profile)
@@ -30,15 +29,11 @@ abstract class StoredUserProfileRepository(protected val store: SessionStore) : 
     }
 }
 
-/**
- * Perfil na Core (GET /api/v1/users/me com o JWT da sessão). O [client] é o
- * mainClient do AppContainer: manda o access token e renova no 401.
- */
+/** Perfil na Core (GET /api/v1/users/me com o JWT da sessão). */
 class HttpUserProfileRepository(
     private val client: ApiClient,
     store: SessionStore
 ) : StoredUserProfileRepository(store) {
-
     override suspend fun fetchMyProfile(): Result<UserProfile> = runCatching {
         parse(JSONObject(client.get(ApiConfig.Main.USERS_ME))).also(store::save)
     }
@@ -72,13 +67,9 @@ class HttpUserProfileRepository(
         saveCollector(approved)
     }
 
-    /**
-     * Formato do `Profile` da Core (IdentityResponses.Profile). `isCollector`
-     * ainda não existe lá: enquanto não vier, vale false (ver MAPA_PENDENCIAS.md).
-     */
+    /** Formato do `Profile` da Core (IdentityResponses.Profile). */
     private fun parse(json: JSONObject): UserProfile {
         val id = json.getString("id")
-        // Sem `isCollector` no JSON, mantém o do cache (vem do GET /pevs/me) da mesma conta.
         val cachedCollector = store.load()?.takeIf { it.id == id }?.isCollector ?: false
         return UserProfile(
             id = id,
@@ -98,26 +89,4 @@ class HttpUserProfileRepository(
         const val HTTP_METHOD_NOT_ALLOWED = 405
         const val HTTP_CONFLICT = 409
     }
-}
-
-/**
- * Perfil só do aparelho, sem rede: devolve o que estiver salvo. Usado nos
- * testes das telas; o app usa sempre o [HttpUserProfileRepository], porque o
- * login é real (Core) mesmo com ApiConfig.USE_MOCK_MAIN_BACKEND.
- */
-class MockUserProfileRepository(store: SessionStore) : StoredUserProfileRepository(store) {
-
-    override suspend fun fetchMyProfile(): Result<UserProfile> =
-        store.load()?.let { Result.success(it) } ?: Result.failure(ProfileNotFoundException())
-
-    /** Edição só no aparelho: atualiza o cache, como se a Core tivesse aceitado. */
-    override suspend fun updateMyProfile(update: ProfileUpdate): Result<UserProfile> {
-        val current = store.load() ?: return Result.failure(ProfileNotFoundException())
-        val updated = current.copy(name = update.name, email = update.email, phone = update.telephone)
-        store.save(updated)
-        return Result.success(updated)
-    }
-
-    override suspend fun fetchCollectorStatus(): Result<Boolean> =
-        Result.success(store.load()?.isCollector == true)
 }

@@ -15,7 +15,6 @@ import org.junit.Test
 import java.io.IOException
 
 class AuthUseCasesTest {
-
     private val repository = FakeUserRepository()
     private val citizen = AccountRegistration.Citizen("Bia", "bia@olius.com", listOf("5511999998888"), "52998224725")
 

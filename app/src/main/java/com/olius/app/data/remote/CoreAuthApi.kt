@@ -6,11 +6,7 @@ import com.olius.app.domain.entity.RegistrationAddress
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Tokens devolvidos pela Core (IdentityResponses.MobileTokens).
- * [accessExpiresInSeconds] vem de `expiresIn` (900 = 15 min): o app calcula o
- * vencimento pelo relógio dele, sem depender do horário do servidor.
- */
+/** Tokens devolvidos pela Core (IdentityResponses.MobileTokens). */
 data class MobileTokens(
     val accessToken: String,
     val accessExpiresInSeconds: Long,
@@ -21,14 +17,8 @@ data class MobileTokens(
     override fun toString() = "MobileTokens[redacted]"
 }
 
-/**
- * Rotas de autenticação e cadastro da Core. Usa um [ApiClient] SEM token:
- * login, cadastro e refresh são públicos, e o logout recebe o Bearer explícito
- * (não pode depender da sessão, que já foi apagada do aparelho).
- * Campos a mais quebram o cadastro: a Core recusa propriedades desconhecidas.
- */
+/** Rotas de autenticação e cadastro da Core. */
 class CoreAuthApi(private val client: ApiClient) {
-
     suspend fun login(email: String, password: String): MobileTokens =
         parseTokens(client.post(ApiConfig.Main.AUTH_MOBILE_LOGIN, JSONObject().put("email", email).put("password", password).toString()))
 
@@ -40,7 +30,7 @@ class CoreAuthApi(private val client: ApiClient) {
         client.post(ApiConfig.Main.AUTH_MOBILE_LOGOUT, "{}", mapOf("Authorization" to "Bearer $accessToken"))
     }
 
-    /** 201 {id, userType}. Não devolve tokens: quem chama faz o login em seguida. */
+    /** 201 {id, userType}. */
     suspend fun register(registration: AccountRegistration, password: String) {
         val body = registrationJson(registration).put("password", password)
         client.post(registrationPath(registration, google = false), body.toString())

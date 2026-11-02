@@ -48,14 +48,7 @@ val CollectionPointType.iconRes: Int
         CollectionPointType.COLLECTOR -> R.drawable.ponto_coletor_voluntario
     }
 
-/**
- * Mapa real com tiles do OpenStreetMap (osmdroid): sem API key e sem cartão.
- *
- * - Pins com o ícone de cada tipo; o selecionado fica maior.
- * - Avisa [onViewportChanged] 400 ms depois que o dedo sai da tela, com a área
- *   visível, para o ViewModel buscar só os pins dali.
- * - Move a câmera quando chega um [CameraRequest] novo (busca, "minha localização").
- */
+/** Mapa real com tiles do OpenStreetMap (osmdroid): sem API key e sem cartão. */
 @Composable
 fun OsmMapView(
     points: List<CollectionPoint>,
@@ -76,7 +69,6 @@ fun OsmMapView(
         createMapView(context) { bounds -> currentOnViewportChanged(bounds) }
     }
 
-    // O MapView precisa acompanhar o ciclo de vida da tela (pausa os downloads de tiles).
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -97,7 +89,6 @@ fun OsmMapView(
         factory = { mapView },
         modifier = modifier,
         update = { map ->
-            // Só refaz os pins quando algo que aparece neles mudou.
             if (holder.points != points || holder.selectedId != selectedPointId || holder.userLocation != userLocation) {
                 holder.points = points
                 holder.selectedId = selectedPointId
@@ -122,11 +113,7 @@ private class MapStateHolder {
     var userDot: Drawable? = null
 }
 
-/**
- * O tile.openstreetmap.org BLOQUEIA o User-Agent padrão do osmdroid (o mapa
- * fica cinza). Usar o pacote do app como User-Agent é obrigatório. O cache
- * de tiles fica no cacheDir, então não precisa de permissão de armazenamento.
- */
+/** O tile.openstreetmap.org BLOQUEIA o User-Agent padrão do osmdroid (o mapa fica cinza). */
 private fun configureOsmdroid(context: Context) {
     val config = Configuration.getInstance()
     config.load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
@@ -148,8 +135,6 @@ private fun createMapView(context: Context, onViewportChanged: (MapBounds) -> Un
         controller.setZoom(DEFAULT_ZOOM)
         controller.setCenter(GeoPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE))
 
-        // O mapa fica dentro de uma tela com scroll vertical: enquanto o dedo
-        // está no mapa, o scroll da tela não pode "roubar" o arrasto.
         setOnTouchListener { view, _ ->
             view.parent?.requestDisallowInterceptTouchEvent(true)
             false
@@ -187,7 +172,6 @@ private fun syncMarkers(
         })
     }
 
-    // O selecionado por último, para ficar por cima dos outros.
     points.sortedBy { it.id == selectedId }.forEach { point ->
         val selected = point.id == selectedId
         map.overlays.add(Marker(map).apply {
@@ -197,7 +181,7 @@ private fun syncMarkers(
             title = point.name
             setOnMarkerClickListener { _, _ ->
                 onPointClick(point.id)
-                true // não abre o balão padrão do osmdroid: a ficha é o nosso bottom sheet
+                true
             }
         })
     }
@@ -213,10 +197,7 @@ private fun pinDrawable(context: Context, type: CollectionPointType, selected: B
     return pixelExact(context, bitmap)
 }
 
-/**
- * O bitmap já está em pixels da tela: marca a densidade dele igual à do
- * aparelho, senão o BitmapDrawable escala de novo (pin 2,75x maior num Pixel 5).
- */
+/** O bitmap já está em pixels da tela. */
 private fun pixelExact(context: Context, bitmap: android.graphics.Bitmap): Drawable {
     bitmap.density = context.resources.displayMetrics.densityDpi
     return BitmapDrawable(context.resources, bitmap)

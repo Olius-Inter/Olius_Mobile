@@ -75,11 +75,7 @@ private fun podiumStyle(position: Int): PodiumStyle = when (position) {
     else -> PodiumStyle(R.drawable.podio_3, OliusBronze, OliusBronze, Color.White)
 }
 
-/**
- * Ranking de Recicladores (ref_ranking.png / ref_ranking_2.png / ref_ranking_b2b.png):
- * banner com a posição da pessoa, seletor de categoria (ranking anual por pontos), abas
- * Competições/Conquistas, pódio e a lista completa.
- */
+/** Ranking de Recicladores: banner com a posição da pessoa. */
 @Composable
 fun RankingScreen(topBarState: OliusTopBarState, viewModel: RankingViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -131,10 +127,6 @@ fun RankingScreen(topBarState: OliusTopBarState, viewModel: RankingViewModel = v
     }
 }
 
-// ---------------------------------------------------------------------------
-// Banner "Ranking de Recicladores"
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun RankingBanner(currentUser: RankingEntry?) {
     Box(
@@ -177,10 +169,6 @@ private fun RankingBanner(currentUser: RankingEntry?) {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Abas Competições / Conquistas
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun RankingTabs(selected: RankingTab, onSelect: (RankingTab) -> Unit) {
@@ -322,13 +310,8 @@ private fun AchievementsContent(state: RankingUiState, onRetry: () -> Unit) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Pódio (2º, 1º, 3º)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun Podium(entries: List<RankingEntry>) {
-    // Ordem visual do pódio: 2º à esquerda, 1º no meio (mais alto), 3º à direita.
     val ordered = listOfNotNull(entries.getOrNull(1), entries.getOrNull(0), entries.getOrNull(2))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -404,10 +387,6 @@ private fun InitialsAvatar(initials: String, style: PodiumStyle, size: Dp) {
         Text(initials, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = style.avatarText)
     }
 }
-
-// ---------------------------------------------------------------------------
-// Lista completa
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun RankingList(entries: List<RankingEntry>) {

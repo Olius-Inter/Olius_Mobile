@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Tema e notificações em `SharedPreferences` próprias (`olius_prefs`). */
 class SharedPrefsAppPreferences(private val prefs: SharedPreferences) : AppPreferencesRepository {
-
     constructor(context: Context) : this(
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     )
@@ -37,12 +36,10 @@ class SharedPrefsAppPreferences(private val prefs: SharedPreferences) : AppPrefe
     }
 }
 
-/** Mesmas preferências só na memória (testes e antes do `AppContainer.init`). */
 class InMemoryAppPreferences(
     theme: ThemeMode = ThemeMode.DEFAULT,
     private var notifications: Boolean = true
 ) : AppPreferencesRepository {
-
     private val themeFlow = MutableStateFlow(theme)
     override val themeMode: StateFlow<ThemeMode> = themeFlow.asStateFlow()
 

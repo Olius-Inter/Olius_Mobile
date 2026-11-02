@@ -4,11 +4,7 @@ import com.olius.app.data.local.db.UserProfileDao
 import com.olius.app.data.local.db.UserProfileEntity
 import com.olius.app.domain.entity.UserProfile
 
-/**
- * Guarda o perfil da Core (id + tipo + nome...) no aparelho: abrir o app não
- * precisa chamar a API para saber se é estabelecimento ou cidadão. A sessão
- * em si (tokens) fica no RefreshTokenStore, não aqui.
- */
+/** Guarda o perfil da Core (id + tipo + nome...) no aparelho. */
 interface SessionStore {
     fun load(): UserProfile?
     fun save(profile: UserProfile)
@@ -22,12 +18,8 @@ class InMemorySessionStore : SessionStore {
     override fun clear() { profile = null }
 }
 
-/**
- * Perfil no SQLite (Room, tabela `user_profile`), com uma cópia em memória:
- * o disco só é lido na primeira vez.
- */
+/** Perfil no SQLite (Room, tabela `user_profile`), com uma cópia em memória: o disco só é lido na primeira vez. */
 class RoomSessionStore(private val dao: UserProfileDao) : SessionStore {
-
     private val lock = Any()
     private var loaded = false
     private var cached: UserProfile? = null

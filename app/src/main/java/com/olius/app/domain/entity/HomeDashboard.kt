@@ -1,14 +1,9 @@
 package com.olius.app.domain.entity
 
-/**
- * Tudo que a Home precisa do backend principal numa chamada só
- * (GET ApiConfig.Main.HOME_DASHBOARD). O card de nível vem da API de ranking
- * (ver [AchievementsSummary]), por isso não está aqui.
- */
+/** Tudo que a Home precisa do backend principal numa chamada só (GET ApiConfig.Main.HOME_DASHBOARD). */
 data class HomeDashboard(
     val firstName: String,
     val fullName: String,
-    /** "Empresa Exemplo LTDA · Situação: Ativa · CNPJ: ..." — montado no backend. */
     val accountSubtitle: String,
     val profileImageUrl: String?,
     val waterPreservedLiters: Double,
@@ -20,7 +15,7 @@ data class HomeDashboard(
     val oilRegisteredThisMonthLiters: Double,
     val pickupReady: Boolean,
     val notifications: List<HomeNotification>,
-    /** Card "Solicitações de Coletas" (Figma Home/Pendência). Vazio = card some. */
+    /** Card "Solicitações de Coletas". */
     val pendingRequests: List<PickupRequestSummary> = emptyList()
 )
 
@@ -41,6 +36,5 @@ data class PickupRequest(
     val estimatedVolumeLiters: Double,
     val scheduledDate: String,
     val observation: String?,
-    /** collection_request.idempotency_key: reenviar não duplica o pedido. */
     val idempotencyKey: String
 )

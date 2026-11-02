@@ -6,7 +6,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PhoneInputTest {
-
     private val countries = listOf(
         PhoneCountry("DE", "Alemanha", 49),
         PhoneCountry("BR", "Brasil", 55),

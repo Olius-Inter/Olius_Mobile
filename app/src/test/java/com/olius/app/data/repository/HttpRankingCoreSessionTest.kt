@@ -19,13 +19,8 @@ import org.junit.Test
 import java.io.IOException
 import java.net.InetSocketAddress
 
-/**
- * Ranking ligado à sessão da Core ([HttpRankingRepository.withCoreSession]):
- * um servidor local faz o papel da API Redis e só devolve `myPosition` para o
- * Bearer que a "Core" aceita.
- */
+/** Ranking ligado à sessão da Core ([HttpRankingRepository.withCoreSession]). */
 class HttpRankingCoreSessionTest {
-
     private val api = mockk<CoreAuthApi>(relaxUnitFun = true)
     private val store = InMemoryRefreshTokenStore()
     private val now = 1_000_000L

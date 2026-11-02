@@ -56,14 +56,11 @@ comentário dizendo o contrato e se ela já existe na Core.
 
 | Flag | Valor | Efeito |
 |---|---|---|
-| `USE_MOCK_MAIN_BACKEND` | `true` | Dados das telas (Home, Histórico, Mapa, Coletor, Dicas) vêm de mocks. Passa para `false` quando a Core tiver todas as rotas |
-| `USE_MOCK_RANKING` | `false` | O ranking usa a API Redis de verdade |
-| `USE_MOCK_OLIVIA` | `false` | O chat chama `POST /api/v1/chat` na Core |
 | `SOCIAL_LOGIN_ENABLED` | `false` | Esconde os botões Google/Facebook/Microsoft. O fluxo do Google está pronto, esperando `auth/mobile/google` na Core |
-| `DEBUG_MOCK_COLLECTOR` | `false` | `true` faz o perfil mock nascer PEV, para testar as telas do coletor |
 
-Login, cadastro, sessão, `/users/me`, ranking e chat **não dependem** de
-`USE_MOCK_MAIN_BACKEND`: vão sempre para os servidores.
+O app **não tem dado mockado**: todas as telas leem da Core, da API de ranking ou do ViaCEP.
+Quando a Core ainda não tem a rota (ex.: dicas, solicitações do coletor, água/CO₂/biodiesel), aquela parte da tela fica vazia ou zerada.
+Os mocks (`Mock*Repository`) ficam só em `app/src/test`, para os testes.
 
 ## Telas
 
@@ -72,7 +69,7 @@ Login, cadastro, sessão, `/users/me`, ranking e chat **não dependem** de
 | Splash | `presentation/splash` | Pula o login se já houver sessão |
 | Login, cadastro (cidadão e estabelecimento) | `screen/PerfilType` | Core. Telefone com DDI por país, CPF/CNPJ validados, CEP pelo ViaCEP |
 | Esqueci a senha (código de 6 dígitos) | `screen/PerfilType` | App pronto; a Core ainda não tem `auth/password-resets` |
-| Home (B2B, B2C e coletor) | `screen/home` | Mock, exceto "Solicitar coleta" (`collection-requests`) |
+| Home (B2B, B2C e coletor) | `screen/home` | Core: nome do perfil, `establishments/me/score`, `collection-requests` e `users/me/points` |
 | Histórico | `screen/history` | B2B: `collections` + `collection-requests` + `score`. B2C: `users/me/points` |
 | Mapa e busca de PEVs | `screen/map` | osmdroid (OpenStreetMap) + GPS. Pontos de `GET /pevs` |
 | Vire Coletor | `screen/becomecollector` | `POST /pevs` + ViaCEP |
@@ -122,8 +119,8 @@ Base: `app/src/main/java/com/olius/app/`.
 | `domain/entity` | Modelos e regras puras (documentos, senha, telefone, erros) |
 | `domain/repository` | Contratos dos repositórios |
 | `domain/usecases` | Casos de uso (`LoginUseCase`, `RegisterUseCase`, `SyncUserProfileUseCase`, `BuildQrCodeContentUseCase`...) |
-| `data/remote` | `ApiConfig` (URLs, rotas e flags), `ApiClient` (HTTP próprio com `HttpURLConnection` + `org.json`), `CoreAuthApi`, `AppContainer` (escolhe mock ou HTTP) |
-| `data/repository` | `Http*Repository` e `Mock*Repository` de cada tela, `CoreSessionRepository` (tokens e refresh) |
+| `data/remote` | `ApiConfig` (URLs, rotas e flags), `ApiClient` (HTTP próprio com `HttpURLConnection` + `org.json`), `CoreAuthApi`, `AppContainer` (monta os repositórios HTTP) |
+| `data/repository` | `Http*Repository` de cada tela, `CoreSessionRepository` (tokens e refresh) |
 | `data/local` | `SessionStore` (Room), `RefreshTokenStore` (Keystore), preferências do aparelho |
 
 Os ViewModels têm construtor padrão que pega os repositórios do `AppContainer`;

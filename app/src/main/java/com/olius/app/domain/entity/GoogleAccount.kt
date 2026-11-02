@@ -1,9 +1,6 @@
 package com.olius.app.domain.entity
 
-/**
- * Conta escolhida no seletor do Google (Credential Manager). O [idToken] vai
- * para a Core; [email] e [name] só pré-preenchem o "Completar cadastro".
- */
+/** Conta escolhida no seletor do Google (Credential Manager). */
 data class GoogleAccount(
     val idToken: String,
     val email: String,

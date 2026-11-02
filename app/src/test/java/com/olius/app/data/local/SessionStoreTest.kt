@@ -9,7 +9,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SessionStoreTest {
-
     private val profile = UserProfile(
         id = "u-1",
         name = "Ana Lima",
@@ -51,7 +50,7 @@ class SessionStoreTest {
 
         assertEquals(UserProfileEntity.from(profile), dao.row)
         assertEquals(profile, store.load())
-        assertEquals(profile, RoomSessionStore(dao).load()) // outra abertura do app lê do banco
+        assertEquals(profile, RoomSessionStore(dao).load())
         assertEquals(2, dao.loads)
     }
 

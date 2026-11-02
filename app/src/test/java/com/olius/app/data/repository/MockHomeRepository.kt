@@ -7,12 +7,7 @@ import com.olius.app.domain.entity.PickupRequest
 import com.olius.app.domain.entity.PickupRequestSummary
 import com.olius.app.domain.repository.HomeRepository
 
-/**
- * Números das referências (referencia_home.png / ref_home_cell_1.png) enquanto
- * o backend principal não existe (ApiConfig.USE_MOCK_MAIN_BACKEND = true).
- */
 class MockHomeRepository : HomeRepository {
-
     private var dashboard = HomeDashboard(
         firstName = "Naldo",
         fullName = "Naldo Canal",

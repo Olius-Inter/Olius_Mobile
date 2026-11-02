@@ -24,7 +24,6 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -180,8 +179,6 @@ class ChatViewModelTest {
         assertNull(state.pendingAttachment)
     }
 
-    // ---------------- Chat pela Core (HttpOlivIARepository) ----------------
-
     /** Repositório falso que guarda o conversationId recebido em cada chamada. */
     private class FakeCoreRepository(private val answer: suspend (call: Int) -> List<OlivIAReplyChunk>) : OlivIARepository {
         val conversationIds = mutableListOf<String?>()
@@ -283,7 +280,6 @@ class ChatViewModelTest {
 
     @Test
     fun `parar quando a conexao fechada vira erro de rede ainda mostra interrompida`() = runTest {
-        // O HttpURLConnection fechado pelo cancelamento lança IOException → Offline.
         val viewModel = ChatViewModel { _, _, _ ->
             flow<OlivIAReplyChunk> {
                 try {

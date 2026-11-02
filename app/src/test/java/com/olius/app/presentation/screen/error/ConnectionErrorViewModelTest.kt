@@ -8,7 +8,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class ConnectionErrorViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

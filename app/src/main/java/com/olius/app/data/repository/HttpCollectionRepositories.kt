@@ -18,12 +18,11 @@ import com.olius.app.domain.entity.EstablishmentHistory
 import com.olius.app.domain.entity.GeoPoint
 import com.olius.app.domain.entity.PevAlreadyExistsException
 import com.olius.app.domain.entity.ImpactStats
-import com.olius.app.domain.entity.Tip
+import com.olius.app.domain.entity.OilImpact
 import com.olius.app.domain.repository.AddressGeocoder
 import com.olius.app.domain.repository.CollectionPointRepository
 import com.olius.app.domain.repository.CollectorRepository
 import com.olius.app.domain.repository.HistoryRepository
-import com.olius.app.domain.repository.TipsRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
@@ -36,11 +35,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/*
- * Implementações HTTP do backend principal. Onde a Core já tem a rota, segue o
- * DTO dela; o resto é o contrato combinado (ApiConfig, bloco "AINDA NÃO EXISTE").
- */
-
 private fun JSONObject.stats() = getJSONObject("stats").let {
     ImpactStats(
         oilCollectedLiters = it.optDouble("oilCollectedLiters", 0.0),
@@ -50,10 +44,7 @@ private fun JSONObject.stats() = getJSONObject("stats").let {
     )
 }
 
-/**
- * Lê todas as páginas de uma rota paginada da Core (`size` máx. 100) até `totalElements`,
- * com teto de segurança. [itemsKey]: `items` na maioria; `movements` em /users/me/points.
- */
+/** Lê todas as páginas de uma rota paginada da Core (`size` máx. 100) até `totalElements`, com teto de segurança. */
 internal suspend fun ApiClient.fetchAllPages(
     path: String,
     filters: Map<String, String> = emptyMap(),
@@ -75,21 +66,11 @@ internal suspend fun ApiClient.fetchAllPages(
 private const val PAGE_SIZE = 100
 private const val MAX_PAGES = 20
 
-/**
- * Histórico. B2B na Core real (não existe `/history/collections`), juntando:
- * - "Coletado": GET /collections?recordStatus=RECORDED (`collectionDate`, `collectedVolumeLiters`);
- * - "Pendente": GET /collection-requests?status=PENDING e ?status=APPROVED, só os sem `collectionId`
- *   (`requestAt`, `estimatedVolumeLiters`);
- * - topo: GET /establishments/me/score (`collectedVolumeLiters`).
- * As três exigem ROLE_ESTABLISHMENT. [clock] é injetável nos testes.
- * B2C: GET /users/me/points (entregas do cidadão com pontos e data). Os litros ainda não vêm
- * (pedido `oilVolumeLiters` à Core); sem eles a tela mostra o erro de carregamento.
- */
+/** Histórico. */
 class HttpHistoryRepository(
     private val client: ApiClient,
     private val clock: Clock = Clock.systemDefaultZone()
 ) : HistoryRepository {
-
     override suspend fun getEstablishmentHistory(): Result<EstablishmentHistory> = runCatching {
         coroutineScope {
             val collected = async {
@@ -105,7 +86,6 @@ class HttpHistoryRepository(
             val pending = PENDING_REQUEST_STATUSES.map { status ->
                 async {
                     client.fetchAllPages(ApiConfig.Main.COLLECTION_REQUESTS, mapOf("status" to status))
-                        // APPROVED com collectionId já virou coleta: aparece como "Coletado".
                         .filter { it.isNull("collectionId") }
                         .map {
                             HistoryRow(
@@ -122,13 +102,7 @@ class HttpHistoryRepository(
             val rows = (collected.await() + pending.flatMap { it.await() }).sortedByDescending { it.date }
             EstablishmentHistory(
                 monthLabel = monthLabel(),
-                stats = ImpactStats(
-                    oilCollectedLiters = score.await().optDouble("collectedVolumeLiters", 0.0),
-                    // A Core ainda não calcula água, CO2 e biodiesel (iriam no GET /home).
-                    waterPreservedLiters = 0.0,
-                    co2AvoidedKg = 0.0,
-                    biodieselLiters = 0.0
-                ),
+                stats = ImpactStats.fromOilLiters(score.await().optDouble("collectedVolumeLiters", 0.0)),
                 items = rows.map {
                     CollectionHistoryItem(it.id, DATE_FORMAT.format(it.date.atZone(clock.zone)), it.liters, it.status)
                 }
@@ -136,7 +110,6 @@ class HttpHistoryRepository(
         }
     }
 
-    /** "Outubro de 2026": mês atual, como no Figma. */
     private fun monthLabel(): String =
         MONTH_FORMAT.format(LocalDate.now(clock)).replaceFirstChar { it.titlecase(PT_BR) }
 
@@ -150,52 +123,35 @@ class HttpHistoryRepository(
         val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM 'de' yyyy", PT_BR)
     }
 
-    /**
-     * Cada `movement` é uma entrega vigente: {deliveryId, points, deliveryDate, revision}, mais
-     * `oilVolumeLiters` e `recordStatus` pedidos à Core. Entrega anulada não aparece nem soma.
-     */
+    /** GET /users/me/deliveries: cada item é uma entrega {id, oilVolumeLiters, deliveryDate, recordStatus...}. */
     override suspend fun getCitizenHistory(): Result<CitizenHistory> = runCatching {
-        val movements = client.fetchAllPages(ApiConfig.Main.USERS_ME_POINTS, itemsKey = "movements")
+        val deliveries = client.fetchAllPages(ApiConfig.Main.USERS_ME_DELIVERIES)
             .filter { it.optString("recordStatus", RECORDED) == RECORDED }
-        val records = movements.map {
-            check(it.has("oilVolumeLiters")) { "A Core ainda não manda oilVolumeLiters em /users/me/points" }
+        val records = deliveries.map {
+            val liters = it.getDouble("oilVolumeLiters")
             DisposalRecord(
-                id = it.getString("deliveryId"),
-                liters = it.getDouble("oilVolumeLiters"),
+                id = it.getString("id"),
+                liters = liters,
                 dateLabel = DATE_FORMAT.format(Instant.parse(it.getString("deliveryDate")).atZone(clock.zone)),
-                // Água, CO2 e biodiesel: fórmulas ainda não definidas na Core (igual ao B2B).
-                waterPreservedLiters = 0.0,
-                co2AvoidedKg = 0.0,
-                biodieselKg = 0.0
+                waterPreservedLiters = OilImpact.waterPreservedLiters(liters),
+                co2AvoidedKg = OilImpact.co2AvoidedKg(liters),
+                biodieselLiters = OilImpact.biodieselLiters(liters)
             )
         }
         CitizenHistory(
             monthLabel = monthLabel(),
-            stats = ImpactStats(
-                oilCollectedLiters = records.sumOf { it.liters },
-                waterPreservedLiters = 0.0,
-                co2AvoidedKg = 0.0,
-                biodieselLiters = 0.0
-            ),
+            stats = ImpactStats.fromOilLiters(records.sumOf { it.liters }),
             records = records
         )
     }
 }
 
-/**
- * Pontos de coleta na rota pública que a Core já tem: GET /pevs (só PEVs APPROVED,
- * de estabelecimento e de cidadão) → {items: [{id, address{..., latitude, longitude}}], totalElements}.
- * A Core não filtra por área nem busca por nome: o app lê todas as páginas uma vez
- * a cada [CACHE_TTL_MS] e filtra aqui. Sem nome nem horário na Core: o nome é
- * "PEV <bairro>" e o horário fica vazio (as telas escondem). PEV sem latitude/longitude
- * não tem pin. O complemento não aparece (pode ser a casa de um cidadão).
- */
+/** Pontos de coleta na rota pública que a Core já tem. */
 class HttpCollectionPointRepository(
     private val client: ApiClient,
     private val geocoder: AddressGeocoder = AddressGeocoder.NONE,
     private val now: () -> Long = System::currentTimeMillis
 ) : CollectionPointRepository {
-
     private val cacheLock = Mutex()
     private var cache: List<CollectionPoint>? = null
     private var cachedAt = 0L
@@ -247,7 +203,6 @@ class HttpCollectionPointRepository(
             address = formatAddress(address),
             openingHours = "",
             isOpenNow = false,
-            // Calculada no app com o GPS (MapViewModel); o backend não precisa mandar.
             distanceKm = null,
             acceptedMaterials = listOf(OIL_MATERIAL),
             latitude = address.getDouble("latitude"),
@@ -260,13 +215,7 @@ class HttpCollectionPointRepository(
         "${address.optString("street")}, ${address.optString("number")} - " +
             "${address.optString("neighborhood")}, ${address.optString("city")}/${address.optString("state")}"
 
-    /**
-     * "Vire Coletor": POST /api/v1/pevs {address: {...}} (PevRequests.Create), com latitude e
-     * longitude do [geocoder] (sem elas o PEV não aparece no mapa). O horário não vai: a Core não
-     * tem o campo e recusa campo desconhecido (400).
-     * Já tem PEV (409): recusado → corrige o endereço e reapresenta; pendente → só corrige;
-     * aprovado ou inativo → [PevAlreadyExistsException].
-     */
+    /** "Vire Coletor": POST /api/v1/pevs {address: {...}} (PevRequests.Create). */
     override suspend fun becomeCollector(request: BecomeCollectorRequest): Result<Unit> = runCatching {
         val body = becomeCollectorBody(request, geocoder.locate(request.geocodingQuery()))
         try {
@@ -319,7 +268,6 @@ class HttpCollectionPointRepository(
 }
 
 class HttpCollectorRepository(private val client: ApiClient) : CollectorRepository {
-
     override suspend fun getRequests(): Result<List<CollectorRequest>> = runCatching {
         JSONArray(client.get(ApiConfig.Main.COLLECTOR_REQUESTS)).let { array ->
             List(array.length()) { index ->
@@ -342,17 +290,5 @@ class HttpCollectorRepository(private val client: ApiClient) : CollectorReposito
     override suspend fun discard(requestId: String): Result<Unit> = runCatching {
         client.post(ApiConfig.Main.COLLECTOR_REQUEST_DISCARD.replace("{id}", requestId), "{}")
         Unit
-    }
-}
-
-class HttpTipsRepository(private val client: ApiClient) : TipsRepository {
-
-    override suspend fun getTips(): Result<List<Tip>> = runCatching {
-        JSONArray(client.get(ApiConfig.Main.TIPS)).let { array ->
-            List(array.length()) { index ->
-                val it = array.getJSONObject(index)
-                Tip(it.getString("id"), it.optString("title"), it.optString("description"))
-            }
-        }
     }
 }

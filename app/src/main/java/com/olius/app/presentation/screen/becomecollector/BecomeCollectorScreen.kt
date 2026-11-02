@@ -3,17 +3,10 @@ package com.olius.app.presentation.screen.becomecollector
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.ui.Alignment
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,16 +17,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.presentation.components.BOTTOM_NAV_CONTENT_PADDING
 import com.olius.app.presentation.components.OliusPageTitle
 import com.olius.app.presentation.components.OliusTabScaffold
@@ -48,10 +41,7 @@ import com.olius.app.presentation.theme.OliusVerdeSeloTexto
 import com.olius.app.presentation.theme.OliusVermelhoFechado
 import com.olius.app.presentation.theme.OliusSuperficie
 
-/**
- * "Virando um Coletor". O Figma só tem título, card vazio e botão amarelo;
- * os campos são os de `addresses` + horário (pendente de design — ver API_08).
- */
+/** "Virando um Coletor". */
 @Composable
 fun BecomeCollectorScreen(
     topBarState: OliusTopBarState,
@@ -67,18 +57,8 @@ fun BecomeCollectorScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(Modifier.height(12.dp))
-            // Mesmo "← Voltar" da tela de Esqueci a senha; o botão físico também volta (BackHandler do NavHost).
-            Row(
-                modifier = Modifier
-                    .clickable(onClick = onDone)
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = OliusTextoPrimario, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Voltar", fontSize = 14.sp, color = OliusTextoPrimario)
-            }
-            Spacer(Modifier.height(4.dp))
+            OliusBackButton(onClick = onDone)
+            Spacer(Modifier.height(8.dp))
             OliusPageTitle(
                 title = "Virando um Coletor",
                 subtitle = "Se transforme em um coletor para que mais pessoas vejam e conheçam seu trabalho!"
@@ -105,7 +85,6 @@ fun BecomeCollectorScreen(
                                 onValueChange = { viewModel.onFieldChange(field, it) },
                                 label = { Text(field.label, fontSize = 13.sp) },
                                 singleLine = true,
-                                // UF não aparece: vem do CEP. Aqui só o aviso da consulta.
                                 isError = field == CollectorField.CEP &&
                                     (state.cepStatus == CepStatus.NOT_FOUND || state.cepStatus == CepStatus.NETWORK_ERROR),
                                 supportingText = state.cepMessage?.takeIf { field == CollectorField.CEP }?.let { message ->
@@ -116,8 +95,6 @@ fun BecomeCollectorScreen(
                                     else KeyboardType.Text
                                 ),
                                 shape = RoundedCornerShape(10.dp),
-                                // Cores fixas: sem elas o Material usa o tema do celular e,
-                                // no modo escuro, texto e rótulo ficam brancos no card branco.
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = OliusTextoPrimario,
                                     unfocusedTextColor = OliusTextoPrimario,
@@ -174,7 +151,7 @@ fun BecomeCollectorScreen(
     }
 }
 
-/** Aviso embaixo do CEP. Sem internet ganha "Tentar de novo" (o CEP já está certo). */
+/** Aviso embaixo do CEP. */
 @Composable
 private fun CepMessage(message: String, status: CepStatus, onRetry: () -> Unit) {
     val isError = status == CepStatus.NOT_FOUND || status == CepStatus.NETWORK_ERROR

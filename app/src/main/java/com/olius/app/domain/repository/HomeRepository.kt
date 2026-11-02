@@ -5,7 +5,6 @@ import com.olius.app.domain.entity.PickupRequest
 
 /** Backend principal (Postgres) para a Home. */
 interface HomeRepository {
-
     suspend fun getDashboard(): Result<HomeDashboard>
 
     /** Devolve o dashboard já atualizado, para não precisar de outro GET. */

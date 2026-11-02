@@ -3,7 +3,6 @@ package com.olius.app.presentation.screen.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.olius.app.data.local.CollectorPromptStore
-import com.olius.app.data.repository.MockCollectionPointRepository
 import com.olius.app.domain.entity.CollectionPoint
 import com.olius.app.domain.entity.CollectionPointType
 import com.olius.app.domain.entity.MapBounds
@@ -28,7 +27,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
-// De quanto em quanto tempo o aviso "Vire um ponto de Coleta" pode voltar.
 val BECOME_COLLECTOR_PROMPT_INTERVAL_MILLIS: Long = TimeUnit.DAYS.toMillis(10)
 
 /** Centro de São Paulo: onde o mapa abre enquanto o GPS não responde. */
@@ -43,21 +41,17 @@ private val DEFAULT_BOUNDS = MapBounds(south = -23.75, west = -46.85, north = -2
 /** Mínimo de letras para o autocomplete chamar a API. */
 const val MIN_SEARCH_LENGTH = 3
 
-/**
- * Tela de Pontos de Coleta: mapa real (osmdroid/OpenStreetMap), busca com
- * autocomplete, filtros, ficha do ponto e aviso "Vire um ponto de Coleta".
- */
+/** Tela de Pontos de Coleta: mapa real (osmdroid/OpenStreetMap). */
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class MapViewModel(
     private val promptStore: CollectorPromptStore,
     private val now: () -> Long = System::currentTimeMillis,
     /** Quem já é Coletor/PEV não vê o aviso nem o botão "Vire Coletor". */
     private val isCollector: Boolean = false,
-    private val repository: CollectionPointRepository = MockCollectionPointRepository(),
+    private val repository: CollectionPointRepository,
     /** Espera depois da última tecla antes de buscar (0 nos testes). */
     searchDebounceMillis: Long = 300
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(
         MapUiState(
             showBecomeCollectorBanner = !isCollector && shouldShowBecomeCollectorPrompt(),
@@ -73,9 +67,6 @@ class MapViewModel(
     init {
         onViewportChanged(DEFAULT_BOUNDS)
 
-        // Autocomplete: debounce evita uma chamada por tecla; flatMapLatest
-        // cancela a busca anterior, então a resposta de "loj" nunca chega
-        // depois da de "loja do seu zé" e sobrescreve a lista certa.
         searchQueries
             .debounce(searchDebounceMillis)
             .map { it.trim() }
@@ -84,7 +75,6 @@ class MapViewModel(
                 if (query.length < MIN_SEARCH_LENGTH) flowOf(emptyList())
                 else flow {
                     _uiState.update { it.copy(isSearching = true) }
-                    // Coletor não aparece no mapa, então também não aparece na busca.
                     emit(repository.searchPoints(query).getOrDefault(emptyList()).filter { it.type in MAP_FILTER_TYPES })
                 }
             }
@@ -92,11 +82,7 @@ class MapViewModel(
             .launchIn(viewModelScope)
     }
 
-    /**
-     * Aparece uma vez (na primeira abertura do mapa) e depois só volta
-     * quando se passarem 10 dias desde a última vez que apareceu. Já marca
-     * como exibido aqui — fechar ou não o aviso não muda a contagem.
-     */
+    /** Aparece uma vez (na primeira abertura do mapa) e depois só volta quando se passarem 10 dias desde a última vez que apareceu. */
     private fun shouldShowBecomeCollectorPrompt(): Boolean {
         val currentTime = now()
         val lastShown = promptStore.lastShownAtMillis()
@@ -105,12 +91,7 @@ class MapViewModel(
         return show
     }
 
-    // ---- Mapa ------------------------------------------------------------------
-
-    /**
-     * O mapa parou de mexer: busca só os pins da área visível. Um movimento
-     * novo cancela a busca anterior (a resposta antiga não sobrescreve a nova).
-     */
+    /** O mapa parou de mexer: busca só os pins da área visível. */
     fun onViewportChanged(bounds: MapBounds) {
         pointsJob?.cancel()
         pointsJob = viewModelScope.launch {
@@ -140,8 +121,6 @@ class MapViewModel(
     private fun newCamera(lat: Double, lng: Double, previous: CameraRequest?, zoom: Double = FOCUS_ZOOM) =
         CameraRequest(lat, lng, zoom, id = (previous?.id ?: 0L) + 1)
 
-    // ---- Busca -----------------------------------------------------------------
-
     fun onSearchQueryChange(value: String) {
         _uiState.update { it.copy(searchQuery = value) }
         searchQueries.value = value
@@ -160,7 +139,7 @@ class MapViewModel(
         onPointSelected(suggestion.id)
     }
 
-    /** Liga/desliga um tipo no filtro. Nunca deixa os dois desligados ao mesmo tempo. */
+    /** Liga/desliga um tipo no filtro. */
     fun onToggleType(type: CollectionPointType) {
         if (type !in MAP_FILTER_TYPES) return
         _uiState.update { state ->
@@ -169,13 +148,7 @@ class MapViewModel(
         }
     }
 
-    // ---- Ficha do ponto ----------------------------------------------------------
-
-    /**
-     * Toque no pin/card: abre a ficha na hora com o resumo e busca o resto
-     * (telefone, CNPJ...). Tocar em outro pin cancela a busca anterior, senão
-     * a resposta do primeiro poderia chegar por último e abrir a ficha errada.
-     */
+    /** Toque no pin/card: abre a ficha na hora com o resumo e busca o resto (telefone, CNPJ...). */
     fun onPointSelected(pointId: String) {
         detailsJob?.cancel()
         _uiState.update {
@@ -196,8 +169,6 @@ class MapViewModel(
             it.copy(selectedPointId = null, selectedDetails = null, isLoadingDetails = false, detailsError = null)
         }
     }
-
-    // ---- Aviso / Vire Coletor ----------------------------------------------------
 
     fun onDismissBanner() {
         _uiState.update { it.copy(showBecomeCollectorBanner = false) }

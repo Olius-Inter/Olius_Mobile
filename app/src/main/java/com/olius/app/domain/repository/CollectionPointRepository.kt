@@ -11,7 +11,6 @@ import com.olius.app.domain.entity.Tip
 
 /** Pontos de coleta (mapa e Home B2C) e o fluxo "Vire Coletor". */
 interface CollectionPointRepository {
-
     /** Aba "Pontos PEV" da Home B2C. */
     suspend fun getNearbyPoints(): Result<List<CollectionPoint>>
 
@@ -40,7 +39,6 @@ fun interface AddressGeocoder {
 
 /** Aba "Solicitações" de quem já é Coletor (estabelecimento com `is_pev`). */
 interface CollectorRepository {
-
     suspend fun getRequests(): Result<List<CollectorRequest>>
 
     suspend fun collect(requestId: String): Result<Unit>

@@ -16,11 +16,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olius.app.presentation.components.NoConnectionContent
 import com.olius.app.presentation.theme.DecorativeBackground
 
-/**
- * Tela cheia "Sem conexão" (rota `error` do NavGraph), sem header nem menu
- * inferior, como no Figma. Abre quando a Home ou o Histórico não conseguem
- * falar com o servidor (IOException: sem internet, timeout, servidor fora).
- */
 @Composable
 fun ConnectionErrorScreen(
     onNavigateHome: () -> Unit,

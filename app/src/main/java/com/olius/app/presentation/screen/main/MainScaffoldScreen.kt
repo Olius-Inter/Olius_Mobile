@@ -68,7 +68,7 @@ import com.olius.app.presentation.screen.ranking.RankingScreen
 import com.olius.app.presentation.theme.OliusNavBarFundo
 import com.olius.app.presentation.theme.OliusTextoSecundario
 
-/** As 5 abas do menu inferior fixo (ver ref_map.png / ref_chat.png / ref_ranking.png). */
+/** As 5 abas do menu inferior fixo. */
 enum class BottomNavTab(val route: String, val label: String) {
     HOME("home_tab", "Home"),
     HISTORY("history_tab", "Histórico"),
@@ -87,28 +87,13 @@ private val tabIcons = mapOf(
     BottomNavTab.OLIVIA to NavTabIcons(R.drawable.chat_olius, R.drawable.chat_olius_selected)
 )
 
-// Raio do blur do vidro do menu inferior — só tem efeito em API 31+ (ver
-// comentário em OliusBottomNavBar). Aumente pra um vidro mais "fosco".
 private const val NAV_BAR_GLASS_BLUR_RADIUS = 28f
 
-/**
- * Casca do app pós-login: menu inferior fixo (nunca sai da tela, mesmo com
- * popups/bottom sheets abertos por cima do conteúdo — ver HOME_SCREEN.md)
- * + um NavHost próprio pra trocar de aba sem perder o menu. As 5 abas são
- * as mesmas para B2B e B2C; cada tela decide o layout pelo tipo da conta.
- *
- * Não usa mais `Scaffold` de propósito: pro efeito de vidro do menu inferior
- * funcionar, o conteúdo precisa continuar sendo desenhado POR BAIXO do menu
- * (não empurrado pra cima por um padding), pra ter algo de verdade pra
- * "borrar" atrás do vidro — ver [OliusBottomNavBar].
- */
+/** Casca do app pós-login: menu inferior fixo + um NavHost próprio pra trocar de aba sem perder o menu. */
 /** Tela fora do menu inferior, mas dentro do scaffold (o menu continua com "Mapa" ativo). */
 private const val BECOME_COLLECTOR_ROUTE = "become_collector"
 
-/**
- * Perfil, "Editar Perfil" e "Política de Privacidade": abertos pelo avatar do topo, dentro do scaffold
- * (menu inferior visível, com a aba de onde a pessoa veio destacada).
- */
+/** Perfil, "Editar Perfil" e "Política de Privacidade". */
 private const val PROFILE_ROUTE = "profile"
 private const val EDIT_PROFILE_ROUTE = "profile_edit"
 private const val PRIVACY_POLICY_ROUTE = "profile_privacy"
@@ -124,14 +109,9 @@ fun MainScaffoldScreen(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // O HomeViewModel fica aqui (e não dentro da aba Home) porque o sino do
-    // header aparece em todas as abas e abre o mesmo bottom sheet — ver
-    // HomeOverlaySheets. O avatar abre a tela de Perfil.
-
     val homeViewModel: HomeViewModel = viewModel()
     val homeState by homeViewModel.uiState.collectAsState()
 
-    // Aba de onde o Perfil foi aberto: fica destacada no menu enquanto o Perfil está aberto.
     var profileOriginRoute by rememberSaveable { mutableStateOf<String?>(null) }
     val tabRouteOf: (String?) -> String? = { route ->
         if (route == BECOME_COLLECTOR_ROUTE) BottomNavTab.MAP.route else route
@@ -140,7 +120,6 @@ fun MainScaffoldScreen(
     val topBarState = OliusTopBarState(
         hasUnreadNotifications = homeState.hasUnreadNotifications,
         onNotificationsClick = homeViewModel::onNotificationsClick,
-        // O avatar abre direto o Perfil (sem o popup "Configurações": a Core não liga contas).
         onProfileClick = {
             if (currentRoute !in PROFILE_ROUTES) {
                 profileOriginRoute = tabRouteOf(currentRoute)
@@ -149,15 +128,10 @@ fun MainScaffoldScreen(
         }
     )
 
-    // A Home não falou com o servidor (IOException): abre a tela cheia "Sem conexão".
     LaunchedEffect(homeState.isOffline) {
         if (homeState.isOffline) onConnectionError()
     }
 
-    // Camada onde o conteúdo de trás (a tela ativa) é "gravado" a cada frame,
-    // só pra ser redesenhada (borrada) por baixo do menu inferior — ver
-    // OliusBottomNavBar. O conteúdo em si continua sendo desenhado
-    // normalmente também (drawContent() roda nos dois lugares).
     val contentLayer = rememberGraphicsLayer()
 
     Box(Modifier.fillMaxSize()) {
@@ -174,7 +148,6 @@ fun MainScaffoldScreen(
             composable(BottomNavTab.HOME.route) {
                 HomeScreen(topBarState = topBarState, viewModel = homeViewModel, onOpenQrCode = onOpenQrCode)
             }
-            // Mesma aba para todos; a tela troca B2B ("Histórico de Coletas") x B2C ("Histórico de Registro").
             composable(BottomNavTab.HISTORY.route) {
                 HistoryScreen(topBarState = topBarState, onConnectionError = onConnectionError)
             }
@@ -214,7 +187,6 @@ fun MainScaffoldScreen(
             contentLayer = contentLayer,
             currentRoute = if (currentRoute in PROFILE_ROUTES) profileOriginRoute else tabRouteOf(currentRoute),
             onTabSelected = { tab ->
-                // Sai do Perfil antes: senão o "restoreState" da aba traria o Perfil de volta.
                 if (currentRoute in PROFILE_ROUTES) navController.popBackStack(PROFILE_ROUTE, inclusive = true)
                 if (tab.route != navController.currentDestination?.route) {
                     navController.navigate(tab.route) {
@@ -232,18 +204,7 @@ fun MainScaffoldScreen(
 
 }
 
-/**
- * Menu inferior fixo com efeito de vidro (glassmorphism): em vez de um fundo
- * cinza sólido, redesenha por baixo de si mesmo — borrado e com uma leve
- * tonalidade escura por cima — o que já está atrás dele na [contentLayer]
- * (a tela ativa, capturada em `MainScaffoldScreen`). O borrão de verdade
- * (`RenderEffect`/`BlurEffect`) só existe a partir do Android 12 (API 31);
- * abaixo disso cai pra um fundo escuro translúcido só (sem borrão), do
- * mesmo jeito que `blurCompat` faz em DecorativeBackground.kt.
- *
- * A troca de cor animada dos ícones continua sendo um crossfade entre o
- * ícone normal e o "_selected" (os PNGs já vêm coloridos).
- */
+/** Menu inferior fixo com efeito de vidro (glassmorphism). */
 @Composable
 private fun OliusBottomNavBar(
     contentLayer: GraphicsLayer,

@@ -20,11 +20,6 @@ import com.olius.app.domain.repository.CollectorRepository
 import com.olius.app.domain.repository.HistoryRepository
 import com.olius.app.domain.repository.TipsRepository
 
-/*
- * Dados das telas do Figma "Olius - Geral" enquanto o backend principal não
- * existe (ApiConfig.USE_MOCK_MAIN_BACKEND = true). Mesmo formato que a API devolve.
- */
-
 private val FIGMA_STATS = ImpactStats(
     oilCollectedLiters = 50.0,
     waterPreservedLiters = 625_900.0,
@@ -33,7 +28,6 @@ private val FIGMA_STATS = ImpactStats(
 )
 
 class MockHistoryRepository : HistoryRepository {
-
     override suspend fun getEstablishmentHistory(): Result<EstablishmentHistory> = Result.success(
         EstablishmentHistory(
             monthLabel = "Agosto de 2026",
@@ -58,20 +52,15 @@ class MockHistoryRepository : HistoryRepository {
                     dateLabel = "04 de Agosto de 2026",
                     waterPreservedLiters = 550_000.0,
                     co2AvoidedKg = 30.0,
-                    biodieselKg = 50.0
+                    biodieselLiters = 50.0
                 )
             }
         )
     )
 }
 
-/**
- * Pontos de exemplo em São Paulo, com coordenadas reais. Segue as mesmas
- * regras que o backend deve ter: pins por bounding box, autocomplete sem
- * acento (prefixo primeiro) e ficha completa só por id.
- */
+/** Pontos de exemplo em São Paulo, com coordenadas reais. */
 class MockCollectionPointRepository : CollectionPointRepository {
-
     override suspend fun getNearbyPoints(): Result<List<CollectionPoint>> = Result.success(SAMPLE_POINTS)
 
     override suspend fun getPointsInArea(bounds: MapBounds): Result<List<CollectionPoint>> =
@@ -150,7 +139,6 @@ class MockCollectionPointRepository : CollectionPointRepository {
                 latitude = -23.5587, longitude = -46.6358
             ),
             CollectionPoint(
-                // PEV de cidadão: aparece como PEV, com o bairro no lugar do nome da pessoa.
                 id = "5", name = "PEV Bom Retiro", type = CollectionPointType.PEV,
                 address = "Região do Bom Retiro", openingHours = "Sáb 9h - 12h", isOpenNow = false, distanceKm = null,
                 acceptedMaterials = listOf("Óleo de cozinha usado (em garrafa PET)"),
@@ -169,7 +157,6 @@ class MockCollectionPointRepository : CollectionPointRepository {
                 latitude = -23.5546, longitude = -46.6577
             ),
             CollectionPoint(
-                // Estabelecimento que não é PEV: a Core não devolve; está aqui para provar o filtro.
                 id = "8", name = "Padaria Pão Quente", type = CollectionPointType.ESTABLISHMENT,
                 address = "R. Cardeal Arcoverde, 500 - Pinheiros", openingHours = "Todos os dias 6h - 20h", isOpenNow = true, distanceKm = null,
                 acceptedMaterials = emptyList(),
@@ -217,7 +204,6 @@ class MockCollectionPointRepository : CollectionPointRepository {
 }
 
 class MockCollectorRepository : CollectorRepository {
-
     private val requests = MutableList(5) { index -> CollectorRequest("r-$index", "KFC - Frangos", "04 de Agosto de 2026", 50.0) }
 
     override suspend fun getRequests(): Result<List<CollectorRequest>> = Result.success(requests.toList())
@@ -230,9 +216,7 @@ class MockCollectorRepository : CollectorRepository {
     override suspend fun discard(requestId: String): Result<Unit> = collect(requestId)
 }
 
-/** Textos do Figma ("Card- Dicas - B2C"). Podem continuar locais se não mudarem com frequência. */
 class MockTipsRepository : TipsRepository {
-
     override suspend fun getTips(): Result<List<Tip>> = Result.success(
         listOf(
             Tip("t-1", "Armazenamento correto do Óleo", "Guarde em garrafas PET bem fechadas. Nunca misture com água."),

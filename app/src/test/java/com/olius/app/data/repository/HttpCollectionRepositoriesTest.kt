@@ -30,7 +30,6 @@ import java.util.Collections
 
 /** Histórico, mapa (GET /pevs) e "Vire Coletor" nas rotas reais da Core, com servidor local. */
 class HttpCollectionRepositoriesTest {
-
     private lateinit var server: HttpServer
     private val requests: MutableList<String> = Collections.synchronizedList(mutableListOf())
     private var postedBody: String? = null
@@ -89,7 +88,6 @@ class HttpCollectionRepositoriesTest {
             page(listOf(request("p-1", "2026-10-20T13:00:00Z", 12.0)))
         }
         responses["/api/v1/collection-requests?status=APPROVED"] = {
-            // a-2 já virou coleta: não pode aparecer como Pendente.
             page(listOf(request("a-1", "2026-10-01T13:00:00Z", 8.0), request("a-2", "2026-09-01T13:00:00Z", 9.0, "c-1")))
         }
         responses["/api/v1/establishments/me/score"] = {
@@ -130,7 +128,6 @@ class HttpCollectionRepositoriesTest {
     fun `historico B2B falha se uma das rotas falhar`() = runTest {
         responses["/api/v1/collections?recordStatus=RECORDED"] = { page(emptyList()) }
         responses["/api/v1/establishments/me/score"] = { "{}" }
-        // collection-requests sem resposta → 404
 
         assertTrue(HttpHistoryRepository(client, clock).getEstablishmentHistory().isFailure)
     }
@@ -165,8 +162,6 @@ class HttpCollectionRepositoriesTest {
         assertFalse(JSONObject(body).has("openingHours"))
     }
 
-    // ---- Mapa: GET /pevs (público) ---------------------------------------------
-
     private fun pev(id: String, neighborhood: String, lat: Double?, lng: Double?) =
         """{"id": "$id", "address": {"id": "a-$id", "state": "SP", "city": "São Paulo", "neighborhood": "$neighborhood",
            "street": "Rua A", "number": "10", "cep": "01001000", "complement": "Casa 2",
@@ -189,7 +184,6 @@ class HttpCollectionRepositoriesTest {
         assertTrue(points.all { it.type == CollectionPointType.PEV })
         assertEquals("PEV Sé", points.first().name)
         assertEquals("Rua A, 10 - Sé, São Paulo/SP", points.first().address)
-        // Complemento pode ser a casa de um cidadão: não aparece.
         assertFalse(points.first().address.contains("Casa 2"))
     }
 
@@ -209,8 +203,6 @@ class HttpCollectionRepositoriesTest {
         assertTrue(repository.searchPoints("sa").getOrThrow().isEmpty())
         assertTrue(repository.getPointDetails("nao-existe").isFailure)
     }
-
-    // ---- Vire Coletor: coordenadas e PEV que já existe ---------------------------
 
     private val paulista =
         BecomeCollectorRequest("01310100", "Av. Paulista", "1000", "Bela Vista", "São Paulo", "SP", null, "8h às 18h")
@@ -240,7 +232,6 @@ class HttpCollectionRepositoriesTest {
 
     @Test
     fun `vire coletor com PEV recusado corrige o endereco e reapresenta`() = runTest {
-        // PATCH não roda no HttpURLConnection da JVM: aqui o cliente é falso.
         val api = mockk<ApiClient>()
         coEvery { api.post(ApiConfig.Main.PEVS, any(), any()) } throws ApiException(409, "{}")
         coEvery { api.get(ApiConfig.Main.PEVS_ME, any()) } returns """{"id": "pev-1", "status": "REJECTED"}"""
@@ -255,17 +246,15 @@ class HttpCollectionRepositoriesTest {
         }
     }
 
-    // ---- Histórico B2C: GET /users/me/points -------------------------------------
-
-    private fun movement(id: String, date: String, liters: Double?, status: String = "RECORDED") =
-        """{"deliveryId": "$id", "points": 3, "deliveryDate": "$date", "revision": 1, "recordStatus": "$status"
-           ${liters?.let { ", \"oilVolumeLiters\": $it" } ?: ""}}"""
+    private fun delivery(id: String, date: String, liters: Double, status: String = "RECORDED") =
+        """{"id": "$id", "pevId": "p1", "oilVolumeLiters": $liters, "deliveryDate": "$date",
+           "pointsEarned": 3, "recordStatus": "$status", "revision": 1}"""
 
     @Test
-    fun `historico B2C usa users me points e tira as entregas anuladas`() = runTest {
-        responses["/api/v1/users/me/points"] = {
-            """{"balance": 3, "movements": [${movement("d1", "2026-10-18T14:00:00Z", 3.7)},
-               ${movement("d2", "2026-10-10T14:00:00Z", 2.0, status = "ANNULLED")}],
+    fun `historico B2C usa users me deliveries e tira as entregas anuladas`() = runTest {
+        responses["/api/v1/users/me/deliveries"] = {
+            """{"items": [${delivery("d1", "2026-10-18T14:00:00Z", 3.7)},
+               ${delivery("d2", "2026-10-10T14:00:00Z", 2.0, status = "ANNULLED")}],
                "page": 0, "size": 100, "totalElements": 2}"""
         }
 
@@ -278,11 +267,12 @@ class HttpCollectionRepositoriesTest {
     }
 
     @Test
-    fun `historico B2C falha enquanto a Core nao manda os litros`() = runTest {
-        responses["/api/v1/users/me/points"] = {
-            """{"balance": 3, "movements": [${movement("d1", "2026-10-18T14:00:00Z", null)}], "page": 0, "size": 100, "totalElements": 1}"""
-        }
+    fun `historico B2C sem entregas fica vazio e zerado`() = runTest {
+        responses["/api/v1/users/me/deliveries"] = { """{"items": [], "page": 0, "size": 100, "totalElements": 0}""" }
 
-        assertTrue(HttpHistoryRepository(client, clock).getCitizenHistory().isFailure)
+        val history = HttpHistoryRepository(client, clock).getCitizenHistory().getOrThrow()
+
+        assertTrue(history.records.isEmpty())
+        assertEquals(0.0, history.stats.oilCollectedLiters, 0.0)
     }
 }

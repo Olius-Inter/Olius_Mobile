@@ -19,13 +19,20 @@ import org.junit.Test
 import java.io.IOException
 
 class HttpPasswordResetRepositoryTest {
-
     private val client = mockk<ApiClient>()
     private val repository = HttpPasswordResetRepository(client)
 
     private val weakPasswordProblem =
         """{"code":"VALIDATION_ERROR","errors":[{"field":"newPassword","message":"inválida"}]}"""
 
+    @Test
+    fun `pedir o link manda so o e-mail para password-reset-requests`() = runTest {
+        val body = slot<String>()
+        coEvery { client.post(ApiConfig.Main.PASSWORD_RESET_REQUESTS, capture(body), any()) } returns """{"message":"ok"}"""
+
+        assertTrue(repository.requestResetLink("ana@olius.com").isSuccess)
+        assertEquals("""{"email":"ana@olius.com"}""", body.captured)
+    }
     @Test
     fun `pedir o codigo manda so o e-mail`() = runTest {
         val body = slot<String>()

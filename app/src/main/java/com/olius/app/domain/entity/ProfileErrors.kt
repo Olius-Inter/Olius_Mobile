@@ -1,9 +1,6 @@
 package com.olius.app.domain.entity
 
-/**
- * Falhas do "Editar Perfil" (PATCH /users/me), já traduzidas do HTTP.
- * Sem rede, a falha continua sendo a `IOException` original.
- */
+/** Falhas do "Editar Perfil" (PATCH /users/me), já traduzidas do HTTP. */
 sealed class ProfileUpdateException(message: String) : Exception(message)
 
 /** 404/405: a Core ainda não tem PATCH /users/me (hoje só existe o GET). */

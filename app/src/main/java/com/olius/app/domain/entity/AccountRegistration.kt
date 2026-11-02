@@ -1,17 +1,10 @@
 package com.olius.app.domain.entity
 
-/**
- * Dados do cadastro na Core (IdentityRequests.CitizenRegistration /
- * EstablishmentRegistration), sem a senha: o cadastro com Google
- * ("Completar cadastro") manda os mesmos campos, só que sem senha.
- *
- * A data de nascimento NÃO entra: o banco não tem a coluna e a Core recusa
- * campos desconhecidos (PEDIDOS_BANCO 1.1).
- */
+/** Dados do cadastro na Core (IdentityRequests.CitizenRegistration / EstablishmentRegistration), sem a senha. */
 sealed interface AccountRegistration {
     val name: String
     val email: String
-    /** Telefones em E.164 só com dígitos (ex.: 5511999998888). Pode ser vazia. */
+    /** Telefones em E.164 só com dígitos (ex.: 5511999998888). */
     val telephones: List<String>
 
     data class Citizen(

@@ -15,10 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * Campos do formulário (ordem da tela). Cada um vira uma coluna de `addresses`/`pev`.
- * A UF não é campo: vem do CEP ([BecomeCollectorUiState.state]).
- */
+/** Campos do formulário (ordem da tela). */
 enum class CollectorField(val label: String, val required: Boolean = true) {
     CEP("CEP"),
     STREET("Rua"),
@@ -29,7 +26,7 @@ enum class CollectorField(val label: String, val required: Boolean = true) {
     OPENING_HOURS("Horário de funcionamento (ex.: Seg-Sex 10h - 16h)")
 }
 
-/** Situação da consulta do CEP. Só [FOUND] libera o envio. */
+/** Situação da consulta do CEP. */
 enum class CepStatus { IDLE, LOADING, FOUND, NOT_FOUND, NETWORK_ERROR }
 
 data class BecomeCollectorUiState(
@@ -59,12 +56,11 @@ data class BecomeCollectorUiState(
             CollectorField.entries.filter { it.required }.all { value(it).isNotBlank() }
 }
 
-/** "Virando um Coletor" (Figma Ponto de coleta / Vire Coletor). */
+/** "Virando um Coletor". */
 class BecomeCollectorViewModel(
     private val repository: CollectionPointRepository = AppContainer.collectionPointRepository,
     private val cepRepository: CepRepository = AppContainer.cepRepository
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(BecomeCollectorUiState())
     val uiState: StateFlow<BecomeCollectorUiState> = _uiState.asStateFlow()
 
@@ -102,7 +98,6 @@ class BecomeCollectorViewModel(
         _uiState.update { it.copy(cepStatus = CepStatus.LOADING) }
         cepJob = viewModelScope.launch {
             val result = cepRepository.lookup(cep)
-            // A pessoa pode ter mudado o CEP enquanto a resposta vinha.
             if (_uiState.value.value(CollectorField.CEP) != cep) return@launch
             result
                 .onSuccess { address ->
@@ -113,7 +108,7 @@ class BecomeCollectorViewModel(
         }
     }
 
-    /** Preenche cidade, bairro e rua (continuam editáveis). Campo vazio no ViaCEP não apaga o que a pessoa digitou. */
+    /** Preenche cidade, bairro e rua (continuam editáveis). */
     private fun fillAddress(address: CepAddress) {
         val filled = listOf(
             CollectorField.CITY to address.city,

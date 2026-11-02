@@ -9,16 +9,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 
-/**
- * Respostas prontas da OlivIA só pra visualizar o chat enquanto a API não
- * existe (mesmas conversas de ref_chat_message.png / ref_chat_plus.png).
- * O texto chega palavra por palavra, simulando o streaming da API real.
- */
+/** Respostas prontas da OlivIA só pra visualizar o chat enquanto a API não existe. */
 class MockOlivIARepository(
     private val wordDelayMillis: Long = 45L,
     private val attachmentDelayMillis: Long = 1_800L
 ) : OlivIARepository {
-
     override fun reply(message: String, attachment: ChatAttachment?, conversationId: String?): Flow<OlivIAReplyChunk> = flow {
         val normalized = message.lowercase()
         when {

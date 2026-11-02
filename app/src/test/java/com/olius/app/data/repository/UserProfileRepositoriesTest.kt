@@ -22,9 +22,7 @@ import org.junit.Assert.assertTrue
 import org.json.JSONObject
 import org.junit.Test
 
-
 class UserProfileRepositoriesTest {
-
     private val store = InMemorySessionStore()
     private val client = mockk<ApiClient>()
     private val http = HttpUserProfileRepository(client, store)
@@ -91,7 +89,6 @@ class UserProfileRepositoriesTest {
             })
         }
         assertEquals("Ana Souza", updated.name)
-        // A Core não manda isCollector: fica o do cache (veio do /pevs/me).
         assertTrue(updated.isCollector)
         assertEquals(updated, http.cachedProfile())
     }
@@ -138,7 +135,6 @@ class UserProfileRepositoriesTest {
 
     @Test
     fun `mock devolve o perfil salvo ou ProfileNotFoundException`() = runTest {
-
         assertTrue(mock.fetchMyProfile().exceptionOrNull() is ProfileNotFoundException)
 
         mock.saveLocal(profile)

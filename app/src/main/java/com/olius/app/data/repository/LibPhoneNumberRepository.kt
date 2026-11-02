@@ -7,16 +7,11 @@ import io.michaelrocks.libphonenumber.android.PhoneNumberUtil
 import java.text.Collator
 import java.util.Locale
 
-/**
- * [PhoneNumberRepository] sobre a libphonenumber (Google, Apache 2.0, offline,
- * sem chave). O [PhoneNumberUtil] é criado só no primeiro uso: no app ele lê os
- * metadados dos assets (precisa do Context); nos testes, de um MetadataLoader.
- */
+/** [PhoneNumberRepository] sobre a libphonenumber (Google, Apache 2.0, offline, sem chave). */
 class LibPhoneNumberRepository(
     utilProvider: () -> PhoneNumberUtil,
     private val displayLocale: Locale = Locale("pt", "BR")
 ) : PhoneNumberRepository {
-
     private val util by lazy(utilProvider)
 
     private val countries by lazy {
@@ -67,9 +62,7 @@ class LibPhoneNumberRepository(
         return country to util.getNationalSignificantNumber(number)
     }
 
-
     companion object {
-        // Core: telephones = List<@Size(min=10,max=15) String> (IdentityRequests.java).
         const val CORE_PHONE_MIN_DIGITS = 10
         const val CORE_PHONE_MAX_DIGITS = 15
     }

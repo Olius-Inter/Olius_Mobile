@@ -17,21 +17,15 @@ import com.olius.app.data.repository.HttpCollectorRepository
 import com.olius.app.data.repository.HttpHistoryRepository
 import com.olius.app.data.repository.HttpHomeRepository
 import com.olius.app.data.repository.HttpPasswordResetRepository
-import com.olius.app.data.repository.HttpTipsRepository
-import com.olius.app.data.repository.MockCollectionPointRepository
-import com.olius.app.data.repository.MockCollectorRepository
-import com.olius.app.data.repository.MockHistoryRepository
-import com.olius.app.data.repository.MockTipsRepository
+import com.olius.app.data.repository.AppTipsRepository
 import com.olius.app.data.repository.HttpRankingRepository
 import com.olius.app.data.repository.HttpUserProfileRepository
 import com.olius.app.data.repository.LibPhoneNumberRepository
 import com.olius.app.data.repository.HttpOlivIARepository
-import com.olius.app.data.repository.MockHomeRepository
-import com.olius.app.data.repository.MockOlivIARepository
-import com.olius.app.data.repository.MockRankingRepository
 import com.olius.app.data.repository.UserRepositoryImpl
 import com.olius.app.data.repository.ViaCepRepository
 import com.olius.app.domain.entity.ProfileType
+import com.olius.app.domain.repository.AddressGeocoder
 import com.olius.app.domain.repository.AppPreferencesRepository
 import com.olius.app.domain.repository.CepRepository
 import com.olius.app.domain.repository.CollectionPointRepository
@@ -51,22 +45,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharedFlow
 
-/**
- * Monta os repositórios usados pelos construtores padrão dos ViewModels.
- * Mock ou HTTP dos DADOS das telas é decidido pelas flags do [ApiConfig];
- * login, cadastro, sessão e perfil vão sempre para a Core.
- * [init] é chamado pela MainActivity antes de qualquer tela; sem ele (testes)
- * a sessão e o perfil ficam em memória.
- */
+/** Monta os repositórios usados pelos construtores padrão dos ViewModels. */
 object AppContainer {
-
     private var sessionStore: SessionStore = InMemorySessionStore()
     private var refreshTokenStore: RefreshTokenStore = InMemoryRefreshTokenStore()
     private var preferences: AppPreferencesRepository = InMemoryAppPreferences()
     private var appContext: Context? = null
 
     fun init(context: Context) {
-        // A Activity é recriada (girar a tela): o banco e os stores são um só por processo.
         if (appContext != null) return
         appContext = context.applicationContext
         sessionStore = RoomSessionStore(OliusDatabase.create(context).userProfileDao())
@@ -74,9 +60,8 @@ object AppContainer {
         preferences = SharedPrefsAppPreferences(context)
     }
 
-    /** Tema e notificações (só no aparelho). A MainActivity observa o tema. */
+    /** Tema e notificações (só no aparelho). */
     val appPreferences: AppPreferencesRepository get() = preferences
-
 
     /** Escopo do app para o que não pode depender de uma tela (ex.: avisar o logout à Core). */
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -102,11 +87,7 @@ object AppContainer {
     /** "Esqueci a senha" com código de 6 dígitos (sempre na Core, sem sessão). */
     val passwordResetRepository: PasswordResetRepository by lazy { HttpPasswordResetRepository(publicCoreClient) }
 
-    /**
-     * Access token da Core para o `Authorization: Bearer` de quem fala com a
-     * Core ou com APIs que validam o JWT dela (ranking — prompt 9 — e chat —
-     * prompt 14). Renova sozinho; null = sem sessão.
-     */
+    /** Access token da Core para o `Authorization: Bearer` de quem fala com a Core ou com APIs que validam o JWT dela. */
     val coreAccessTokenProvider: suspend () -> String? = { sessionRepository.accessToken() }
 
     /** Emite quando a sessão acaba sozinha (refresh recusado): a navegação volta para o login. */
@@ -117,67 +98,58 @@ object AppContainer {
         ApiClient(
             baseUrl = ApiConfig.MAIN_BASE_URL,
             tokenProvider = coreAccessTokenProvider,
-            onUnauthorized = sessionRepository::onUnauthorized
+            onUnauthorized = sessionRepository::onUnauthorized,
+            requireToken = true
         )
     }
 
-    /** Sempre a Core (GET /users/me), mesmo com USE_MOCK_MAIN_BACKEND: o login é real. */
+    /** GET /users/me na Core. */
     val userProfileRepository: UserProfileRepository by lazy { HttpUserProfileRepository(mainClient, sessionStore) }
 
     /** Tipo da conta logada; sem perfil ainda, assume estabelecimento. */
     fun currentProfileType(): ProfileType =
         userProfileRepository.cachedProfile()?.profileType ?: ProfileType.ESTABLISHMENT
 
-    /**
-     * "Sua posição" usa o JWT da Core; 401 → o mesmo refresh único da sessão e repete.
-     * Conquistas B2B vêm da Core (dado de tela): só com USE_MOCK_MAIN_BACKEND = false.
-     */
+    /** "Sua posição" usa o JWT da Core; 401 → o mesmo refresh único da sessão e repete. */
     val rankingRepository: RankingRepository by lazy {
-        if (ApiConfig.USE_MOCK_RANKING) MockRankingRepository()
-        else HttpRankingRepository.withCoreSession(
+        HttpRankingRepository.withCoreSession(
             baseUrl = ApiConfig.RANKING_BASE_URL,
             tokenProvider = coreAccessTokenProvider,
             onUnauthorized = sessionRepository::onUnauthorized,
-            coreClient = if (ApiConfig.USE_MOCK_MAIN_BACKEND) null else mainClient
+            coreClient = mainClient
         )
     }
 
-    /**
-     * Chat da OlivIA: a Core com o mesmo JWT e refresh do [mainClient], mas
-     * readTimeout de 60 s (a IA demora). O app não chama a IA direto.
-     */
+    /** Chat da OlivIA: a Core com o mesmo JWT e refresh do [mainClient], mas readTimeout de 60 s (a IA demora). */
     val olivIARepository: OlivIARepository by lazy {
-        if (ApiConfig.USE_MOCK_OLIVIA) MockOlivIARepository()
-        else HttpOlivIARepository(
+        HttpOlivIARepository(
             ApiClient(
                 baseUrl = ApiConfig.MAIN_BASE_URL,
                 tokenProvider = coreAccessTokenProvider,
                 onUnauthorized = sessionRepository::onUnauthorized,
-                readTimeoutMs = ApiConfig.CHAT_READ_TIMEOUT_MS
+                readTimeoutMs = ApiConfig.CHAT_READ_TIMEOUT_MS,
+                requireToken = true
             )
         )
     }
 
+    /** Home montada com as rotas que a Core já tem; o nome vem do perfil da conta logada. */
     val homeRepository: HomeRepository by lazy {
-        if (ApiConfig.USE_MOCK_MAIN_BACKEND) MockHomeRepository() else HttpHomeRepository(mainClient)
+        HttpHomeRepository(mainClient, profileProvider = {
+            userProfileRepository.cachedProfile() ?: userProfileRepository.fetchMyProfile().getOrNull()
+        })
     }
 
-    val historyRepository: HistoryRepository by lazy {
-        if (ApiConfig.USE_MOCK_MAIN_BACKEND) MockHistoryRepository() else HttpHistoryRepository(mainClient)
-    }
+    val historyRepository: HistoryRepository by lazy { HttpHistoryRepository(mainClient) }
 
     val collectionPointRepository: CollectionPointRepository by lazy {
-        if (ApiConfig.USE_MOCK_MAIN_BACKEND) MockCollectionPointRepository()
-        else HttpCollectionPointRepository(
+        HttpCollectionPointRepository(
             mainClient,
-            geocoder = AndroidAddressGeocoder(checkNotNull(appContext) { "AppContainer.init não foi chamado" })
+            geocoder = appContext?.let(::AndroidAddressGeocoder) ?: AddressGeocoder.NONE
         )
     }
 
-    /**
-     * DDI/máscara/validação do telefone, offline. A libphonenumber lê os
-     * metadados dos assets, por isso precisa do [init]; só é criada no 1º uso.
-     */
+    /** DDI/máscara/validação do telefone, offline. */
     val phoneNumberRepository: PhoneNumberRepository by lazy {
         LibPhoneNumberRepository(utilProvider = {
             PhoneNumberUtil.createInstance(checkNotNull(appContext) { "AppContainer.init não foi chamado" })
@@ -187,14 +159,11 @@ object AppContainer {
     /** Serviço público (ViaCEP), sem mock: não depende da Core nem de token. */
     val cepRepository: CepRepository by lazy { ViaCepRepository(ApiClient(ApiConfig.VIACEP_BASE_URL)) }
 
-    val collectorRepository: CollectorRepository by lazy {
-        if (ApiConfig.USE_MOCK_MAIN_BACKEND) MockCollectorRepository() else HttpCollectorRepository(mainClient)
-    }
+    val collectorRepository: CollectorRepository by lazy { HttpCollectorRepository(mainClient) }
 
-    val tipsRepository: TipsRepository by lazy {
-        if (ApiConfig.USE_MOCK_MAIN_BACKEND) MockTipsRepository() else HttpTipsRepository(mainClient)
-    }
+    /** Conteúdo educativo fixo do app, não vem da Core. */
+    val tipsRepository: TipsRepository by lazy { AppTipsRepository() }
 
-    /** Coletor = estabelecimento com is_pev (ver API_07). */
+    /** Coletor = estabelecimento com is_pev. */
     fun isCollector(): Boolean = userProfileRepository.cachedProfile()?.isCollector == true
 }

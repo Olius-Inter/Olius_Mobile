@@ -25,11 +25,7 @@ import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusSuperficie
 
-/**
- * Seletor em "pílula" (fundo cinza, opção ativa em branco) — igual aos
- * seletores Estabelecimento/Cidadão e Este Mês/Este Ano/Geral de ref_ranking.png.
- * As opções não esticam: ficam do tamanho do texto, alinhadas à esquerda.
- */
+/** Seletor em "pílula" (fundo cinza, opção ativa em branco). */
 @Composable
 fun <T> OliusSegmentedControl(
     options: List<T>,

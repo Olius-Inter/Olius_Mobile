@@ -3,12 +3,8 @@ package com.olius.app.domain.repository
 import com.olius.app.domain.entity.AccountRegistration
 import com.olius.app.domain.entity.EstablishmentType
 
-/**
- * [UserRepository] em memória para testes: devolve o [Result] configurado em
- * cada campo e registra os argumentos recebidos, sem tocar na Core.
- */
+/** [UserRepository] em memória para testes. */
 class FakeUserRepository : UserRepository {
-
     var signInResult: Result<Unit> = Result.success(Unit)
     var registerResult: Result<Unit> = Result.success(Unit)
     var googleSignInResult: Result<Unit> = Result.success(Unit)

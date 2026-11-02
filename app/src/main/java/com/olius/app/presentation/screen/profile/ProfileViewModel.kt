@@ -44,18 +44,13 @@ data class ProfileUiState(
         }
 }
 
-/**
- * Tela de Perfil (aberta pelo avatar do topo). Mostra o perfil do cache (Room)
- * na hora e depois atualiza com GET /users/me e GET /pevs/me. Tema e
- * notificações ficam só no aparelho.
- */
+/** Tela de Perfil (aberta pelo avatar do topo). */
 class ProfileViewModel(
     private val profiles: UserProfileRepository = AppContainer.userProfileRepository,
     private val preferences: AppPreferencesRepository = AppContainer.appPreferences,
     private val phoneNumbers: PhoneNumberRepository = AppContainer.phoneNumberRepository,
     private val logoutUseCase: LogoutUseCase = LogoutUseCase(AppContainer.userRepository)
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(
         ProfileUiState(
             themeMode = preferences.themeMode.value,
@@ -65,12 +60,11 @@ class ProfileViewModel(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
-        // Cache primeiro: a tela abre com os dados sem esperar a rede.
         profiles.cachedProfile()?.let(::applyProfile)
         refresh()
     }
 
-    /** Busca de novo (ex.: ao voltar do "Editar Perfil"). Falhas mantêm o cache na tela. */
+    /** Busca de novo (ex.: ao voltar do "Editar Perfil"). */
     fun refresh() {
         viewModelScope.launch {
             profiles.fetchMyProfile().onSuccess(::applyProfile)
@@ -86,7 +80,6 @@ class ProfileViewModel(
     }
 
     private fun applyProfile(profile: UserProfile) {
-
         _uiState.update {
             it.copy(
                 name = profile.name,
@@ -106,8 +99,6 @@ class ProfileViewModel(
         return "${country.dialCodeLabel} ${phoneNumbers.formatAsYouType(country.isoCode, national)}"
     }
 
-    // ---- Tema ---------------------------------------------------------------
-
     fun onThemeClick() = _uiState.update { it.copy(isThemeDialogOpen = true) }
 
     fun onDismissThemeDialog() = _uiState.update { it.copy(isThemeDialogOpen = false) }
@@ -118,27 +109,19 @@ class ProfileViewModel(
         _uiState.update { it.copy(themeMode = mode, isThemeDialogOpen = false) }
     }
 
-    // ---- Notificações -------------------------------------------------------
-
     /** Ainda não há push: a chave só guarda a escolha para quando houver. */
     fun onNotificationsToggle(enabled: Boolean) {
         preferences.setNotificationsEnabled(enabled)
         _uiState.update { it.copy(notificationsEnabled = enabled) }
     }
 
-    // ---- Sair ---------------------------------------------------------------
-
-    /**
-     * Logout real na Core (POST /auth/mobile/logout) e limpa o perfil do cache.
-     * A navegação para o login é feita por quem chama, logo depois.
-     */
+    /** Logout real na Core (POST /auth/mobile/logout) e limpa o perfil do cache. */
     fun onLogoutClick() {
         logoutUseCase()
         profiles.clear()
     }
 
     companion object {
-        /** Primeira letra do primeiro e do último nome ("Naldo Canal" → "NC"). */
         fun initialsOf(name: String): String {
             val words = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
             val letters = when {

@@ -18,7 +18,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 class RankingViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

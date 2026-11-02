@@ -16,7 +16,6 @@ import java.net.InetSocketAddress
 
 /** Conquistas B2B na Core (GET /establishments/me/certificate-progress), com servidor local. */
 class HttpAchievementsRepositoryTest {
-
     private lateinit var server: HttpServer
     private var path: String? = null
 

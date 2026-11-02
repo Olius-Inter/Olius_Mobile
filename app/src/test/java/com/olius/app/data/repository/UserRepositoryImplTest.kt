@@ -30,7 +30,6 @@ import org.junit.Test
 import java.io.IOException
 
 class UserRepositoryImplTest {
-
     private val api = mockk<CoreAuthApi>(relaxUnitFun = true)
     private val store = InMemoryRefreshTokenStore()
     private val tokens = MobileTokens("a-1", 900, "r-1", null)
@@ -79,7 +78,6 @@ class UserRepositoryImplTest {
         coEvery { api.googleLogin("g-2") } throws ApiException(404, problem("PROFILE_REQUIRED"))
         assertTrue(repository.signInWithGoogleIdToken("g-2").exceptionOrNull() is ProfileRequiredException)
 
-        // Rota ainda inexistente na Core: 404 genérico.
         coEvery { api.googleLogin("g-3") } throws ApiException(404, problem("RESOURCE_NOT_FOUND"))
         assertTrue(repository.signInWithGoogleIdToken("g-3").exceptionOrNull() is AuthUnavailableException)
     }

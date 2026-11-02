@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibPhoneNumberRepositoryTest {
-
     private val repository = TestPhoneNumbers.repository()
 
     @Test

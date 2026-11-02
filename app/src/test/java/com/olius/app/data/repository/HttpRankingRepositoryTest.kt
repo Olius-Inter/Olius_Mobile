@@ -15,7 +15,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HttpRankingRepositoryTest {
-
     private val client = mockk<ApiClient>()
     private val anonymous = mockk<ApiClient>()
     private val repository = HttpRankingRepository(client, anonymous)

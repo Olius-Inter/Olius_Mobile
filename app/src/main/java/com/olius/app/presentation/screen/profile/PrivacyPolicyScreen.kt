@@ -8,44 +8,32 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.data.remote.ApiConfig
 import com.olius.app.presentation.components.BOTTOM_NAV_CONTENT_PADDING
 import com.olius.app.presentation.theme.OliusFundoTela
 import com.olius.app.presentation.theme.OliusTextoPrimario
-import com.olius.app.presentation.theme.OliusTextoPrimarioClaro
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusTituloMarrom
 
 /** Uma seção numerada da política (título + parágrafos). */
 data class PolicySection(val title: String, val paragraphs: List<String>)
 
-/** Data mostrada no rodapé. Atualize junto com o texto. */
+/** Data mostrada no rodapé. */
 const val PRIVACY_POLICY_UPDATED_AT = "31/10/2026"
 
-/**
- * Texto da Política de Privacidade. O Figma ("Perfil-V2", nó 3941:43990) só tem
- * os três títulos e "lorem ipsum"; este texto descreve o que o app realmente
- * coleta hoje. RASCUNHO: revisar com a equipe antes de publicar na loja.
- */
+/** Texto da Política de Privacidade. */
 val PRIVACY_POLICY_SECTIONS: List<PolicySection> = listOf(
     PolicySection(
         "1. Dados que coletamos",
@@ -94,11 +82,7 @@ val PRIVACY_POLICY_SECTIONS: List<PolicySection> = listOf(
     )
 )
 
-/**
- * Política de Privacidade (Figma "Perfil-V2" → "Política de privacidade"): voltar,
- * título e as seções numeradas, com rolagem. Fica dentro do app (funciona sem
- * internet), em vez de abrir uma página no navegador.
- */
+/** Política de Privacidade: voltar, título e as seções numeradas, com rolagem. */
 @Composable
 fun PrivacyPolicyScreen(onBack: () -> Unit) {
     Box(
@@ -116,15 +100,7 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
         ) {
             Spacer(Modifier.height(8.dp))
             Box(Modifier.fillMaxWidth()) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Voltar", tint = OliusTextoPrimarioClaro)
-                }
+                OliusBackButton(onClick = onBack)
                 Text(
                     "Política de privacidade",
                     fontSize = 22.sp,

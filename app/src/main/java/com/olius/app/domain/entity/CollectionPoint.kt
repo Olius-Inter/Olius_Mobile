@@ -1,6 +1,6 @@
 package com.olius.app.domain.entity
 
-/** Os 3 tipos de ponto de coleta. O app mostra só PEV ([VISIBLE_POINT_TYPES]). */
+/** Os 3 tipos de ponto de coleta. */
 enum class CollectionPointType(val label: String, val pluralLabel: String) {
     /** Ponto de Entrega Voluntária fixo (ecoponto). */
     PEV("PEV", "PEVs"),
@@ -12,21 +12,10 @@ enum class CollectionPointType(val label: String, val pluralLabel: String) {
     COLLECTOR("Coletor", "Coletores")
 }
 
-/**
- * Tipos que aparecem para o usuário: mapa, busca e aba "Pontos PEV" da Home B2C.
- * Só PEV (decisão de 01/11/2026): o PEV de estabelecimento e o de cidadão chegam
- * da Core como `PEV`; estabelecimento que não é PEV fica de fora.
- */
+/** Tipos que aparecem para o usuário: mapa, busca e aba "Pontos PEV" da Home B2C. */
 val VISIBLE_POINT_TYPES: List<CollectionPointType> = listOf(CollectionPointType.PEV)
 
-/**
- * Um ponto de coleta (pin do mapa e aba "Pontos PEV" da Home B2C). É o
- * "resumo" que vem junto com os pins da área visível; telefone, CNPJ e o
- * resto da ficha só vêm no toque ([CollectionPointDetails]).
- *
- * [distanceKm] é calculada no app a partir do GPS ([distanceKmBetween]);
- * null enquanto a localização da pessoa não é conhecida.
- */
+/** Um ponto de coleta (pin do mapa e aba "Pontos PEV" da Home B2C). */
 data class CollectionPoint(
     val id: String,
     val name: String,
@@ -70,11 +59,7 @@ data class PointSuggestion(
 /** Campo livre que a empresa escolheu publicar (tabela `ponto_info` proposta, só `publico = true`). */
 data class PointInfo(val label: String, val value: String)
 
-/**
- * Ficha completa do ponto, buscada no toque (GET collection-points/{id}).
- * Tudo opcional: campo nulo não aparece na tela. Coletor (pessoa física)
- * nunca recebe telefone/CNPJ sem consentimento (LGPD).
- */
+/** Ficha completa do ponto, buscada no toque (GET collection-points/{id}). */
 data class CollectionPointDetails(
     val id: String,
     val name: String,
@@ -104,10 +89,7 @@ fun distanceKmBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
     return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a))
 }
 
-/**
- * Formulário "Virando um Coletor". O Figma ainda não tem os campos (card vazio);
- * estes são os obrigatórios das tabelas `addresses` + `pev` (status nasce PENDING).
- */
+/** Formulário "Virando um Coletor". */
 data class BecomeCollectorRequest(
     val cep: String,
     val street: String,

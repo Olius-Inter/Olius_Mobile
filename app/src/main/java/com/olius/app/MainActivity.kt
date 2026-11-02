@@ -6,6 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -23,13 +26,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AppContainer.init(applicationContext)
         enableEdgeToEdge()
+        hideNavigationBar()
 
         setContent {
-            // Tema salvo no Perfil (claro, escuro ou do sistema): troca o app inteiro na hora.
             val themeMode by AppContainer.appPreferences.themeMode.collectAsState()
             val darkTheme = themeMode.isDark(isSystemInDarkTheme())
 
-            // Ícones da barra de status/navegação: escuros no tema claro, claros no escuro.
             DisposableEffect(darkTheme) {
                 val style = if (darkTheme) {
                     SystemBarStyle.dark(Color.TRANSPARENT)
@@ -46,6 +48,19 @@ class MainActivity : ComponentActivity() {
                     NavGraph(navController = navController)
                 }
             }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideNavigationBar()
+    }
+
+    /** Esconde os botões do sistema (recentes, início, voltar) enquanto o app está aberto. */
+    private fun hideNavigationBar() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.navigationBars())
         }
     }
 }

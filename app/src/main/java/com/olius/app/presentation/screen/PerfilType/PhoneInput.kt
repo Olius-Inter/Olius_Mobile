@@ -44,12 +44,7 @@ import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusSuperficie
 import java.text.Normalizer
 
-/**
- * Campo de telefone do cadastro: seletor de país ("🇧🇷 +55 ⌄") + número com a
- * máscara do país. O estado guarda só os dígitos ([digits]); a máscara
- * ([formatted], vinda do ViewModel) é só visual, então o cursor não pula
- * quando a formatação muda.
- */
+/** Campo de telefone do cadastro: seletor de país ("🇧🇷 +55 ⌄") + número com a máscara do país. */
 @Composable
 internal fun OliusPhoneField(
     country: PhoneCountry,
@@ -173,10 +168,7 @@ private fun CountryRow(country: PhoneCountry, selected: Boolean, onClick: () -> 
     }
 }
 
-/**
- * Busca do seletor: pelo nome (sem acento, sem diferença de maiúscula), pelo
- * código ISO ("BR") ou pelo DDI ("55" ou "+55"). Vazio devolve todos.
- */
+/** Busca do seletor: pelo nome (sem acento, sem diferença de maiúscula), pelo código ISO ("BR") ou pelo DDI ("55" ou "+55"). */
 internal fun filterPhoneCountries(countries: List<PhoneCountry>, query: String): List<PhoneCountry> {
     val term = normalizeForSearch(query.trim())
     if (term.isEmpty()) return countries
@@ -193,18 +185,12 @@ private fun normalizeForSearch(text: String): String =
         .replace(Regex("\\p{M}+"), "")
         .lowercase()
 
-/**
- * Máscara só visual: o campo guarda os dígitos e mostra [formatted] (o mesmo
- * número com a formatação do país). Se os dois não baterem (um quadro entre a
- * digitação e o novo estado), mostra os dígitos puros.
- */
+/** Máscara só visual: o campo guarda os dígitos e mostra [formatted] (o mesmo número com a formatação do país). */
 internal data class PhoneMaskTransformation(private val formatted: String) : VisualTransformation {
-
     override fun filter(text: AnnotatedString): TransformedText {
         val digits = text.text
         if (formatted.filter(Char::isDigit) != digits) return TransformedText(text, OffsetMapping.Identity)
 
-        // Posição, no texto formatado, de cada dígito digitado.
         val digitPositions = formatted.indices.filter { formatted[it].isDigit() }
         val mapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int =

@@ -38,23 +38,17 @@ data class EditProfileUiState(
     val saved: Boolean = false
 )
 
-/**
- * "Editar Perfil": nome, e-mail e telefone (com DDI). "ALTERAR" manda
- * PATCH /users/me {name, email, telephone}; a Core ainda não tem essa rota,
- * então hoje a resposta é "ainda não disponível no servidor".
- */
+/** "Editar Perfil": nome, e-mail e telefone (com DDI). */
 class EditProfileViewModel(
     private val profiles: UserProfileRepository = AppContainer.userProfileRepository,
     private val phoneNumbers: PhoneNumberRepository = AppContainer.phoneNumberRepository
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(EditProfileUiState())
     val uiState: StateFlow<EditProfileUiState> = _uiState.asStateFlow()
 
     val phoneCountries: List<PhoneCountry> by lazy { phoneNumbers.countries() }
 
     init {
-        // Os campos já abrem com o perfil do cache (sem esperar a rede).
         profiles.cachedProfile()?.let { profile ->
             val (country, national) = profile.phone
                 ?.let { runCatching { phoneNumbers.fromE164Digits(it) }.getOrNull() }
@@ -83,7 +77,6 @@ class EditProfileViewModel(
         errorMessage = null
     )
 
-    /** "ALTERAR": valida como a Core (PLANO seção 5) e envia o PATCH. */
     fun onSaveClick() {
         val state = _uiState.value
         if (state.isSaving) return
@@ -105,7 +98,6 @@ class EditProfileViewModel(
 
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
         viewModelScope.launch {
-            // Sucesso: o repositório já gravou o perfil novo no cache (Room).
             profiles.updateMyProfile(ProfileUpdate(name, email, state.phoneE164))
                 .onSuccess { _uiState.update { it.copy(isSaving = false, saved = true) } }
                 .onFailure { error -> _uiState.update { it.copy(isSaving = false).withError(error) } }

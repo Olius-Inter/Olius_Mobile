@@ -1,10 +1,6 @@
 package com.olius.app.domain.entity
 
-/**
- * Regras da senha iguais às da Core (`StrongPasswordValidator`): 10 a 128
- * caracteres, com pelo menos 1 maiúscula, 1 número e 1 símbolo (qualquer
- * caractere que não é letra, número nem espaço). A tela mostra cada regra.
- */
+/** Regras da senha iguais às da Core (`StrongPasswordValidator`). */
 enum class PasswordRule(val message: String) {
     LENGTH("De 10 a 128 caracteres"),
     UPPERCASE("Uma letra maiúscula"),

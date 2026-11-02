@@ -48,11 +48,7 @@ import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusVerdeAberto
 
-/**
- * Ações dos campos que a Core exige no cadastro (CPF/CNPJ, tipo, endereço) e
- * do "Completar cadastro" do Google. Agrupadas para não inflar ainda mais a
- * lista de parâmetros do PerfilTypeContent. Padrão vazio = preview.
- */
+/** Ações dos campos que a Core exige no cadastro (CPF/CNPJ, tipo, endereço) e do "Completar cadastro" do Google. */
 internal class AccountFormActions(
     val onSelectProfileType: (ProfileType) -> Unit = {},
     val onDocumentChange: (String) -> Unit = {},
@@ -97,7 +93,6 @@ private fun EstablishmentFields(uiState: PerfilTypeUiState, actions: AccountForm
         placeholder = "CEP",
         leadingIconRes = null,
         keyboardType = KeyboardType.Number,
-        // Erro de validação vale mais que o status da consulta.
         error = uiState.fieldError(RegisterField.CEP) ?: uiState.cepMessage.takeIf { uiState.cepStatus != CepStatus.LOADING },
         visualTransformation = PhoneMaskTransformation(formatCep(uiState.registerCep))
     )
@@ -171,7 +166,6 @@ private fun EstablishmentTypeField(uiState: PerfilTypeUiState, actions: AccountF
             shape = RectangleShape,
             colors = oliusFieldColors()
         )
-        // O TextField só leitura não repassa o toque: uma camada por cima abre o menu.
         Box(
             Modifier
                 .matchParentSize()
@@ -195,10 +189,7 @@ private fun EstablishmentTypeField(uiState: PerfilTypeUiState, actions: AccountF
     if (uiState.establishmentTypesStatus == LoadStatus.ERROR) LinkText("Tentar de novo", actions.onRetryEstablishmentTypes)
 }
 
-/**
- * As regras da senha da Core, cada uma marcada quando cumprida. Só aparece
- * depois que a pessoa começa a digitar ([visible] = senha não vazia).
- */
+/** As regras da senha da Core, cada uma marcada quando cumprida. */
 @Composable
 internal fun PasswordChecklist(checklist: List<Pair<PasswordRule, Boolean>>, visible: Boolean) {
     AnimatedVisibility(
@@ -228,11 +219,7 @@ private fun PasswordRules(checklist: List<Pair<PasswordRule, Boolean>>) {
     }
 }
 
-/**
- * "Completar cadastro": quem entrou com o Google e ainda não tem conta na
- * Core. Pede tipo de conta, telefone (com DDI), CPF ou CNPJ/tipo/endereço.
- * Sem senha: a conta é do Google. O e-mail vem do Google e não muda.
- */
+/** "Completar cadastro": quem entrou com o Google e ainda não tem conta na Core. */
 @Composable
 internal fun CompleteProfileCard(
     uiState: PerfilTypeUiState,

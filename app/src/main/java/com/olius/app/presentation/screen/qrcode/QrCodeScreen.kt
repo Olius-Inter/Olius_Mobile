@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,9 +19,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,21 +40,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
+import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.R
 import com.olius.app.presentation.theme.DecorativeBackground
 import com.olius.app.presentation.theme.OliusAmarelo
 import com.olius.app.presentation.theme.OliusLaranjaVivo
-import com.olius.app.presentation.theme.OliusTextoCard
 import com.olius.app.presentation.theme.OliusTituloMarrom
 import com.olius.app.presentation.theme.OliusTituloMarromClaro
 import com.olius.app.presentation.theme.OliusSuperficie
 
 private val StepGray = Color(0xFF636363)
 
-/**
- * "Mobile / identificação / Cidadão" (Figma): QR com o token do usuário para o
- * PEV escanear. O QR guarda só o qrToken (POST /qr/resolutions do lado de quem lê).
- */
+/** "Mobile / identificação / Cidadão": QR com o token do usuário para o PEV escanear. */
 @Composable
 fun QrCodeScreen(onBack: () -> Unit, viewModel: QrCodeViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -69,18 +65,9 @@ fun QrCodeScreen(onBack: () -> Unit, viewModel: QrCodeViewModel = viewModel()) {
                 .padding(horizontal = 26.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(28.dp))
-            Text(
-                "← Voltar",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = OliusTextoCard,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .clickable(onClick = onBack)
-                    .padding(vertical = 4.dp)
-            )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
+            OliusBackButton(onClick = onBack, modifier = Modifier.align(Alignment.Start))
+            Spacer(Modifier.height(16.dp))
             OliusLogo()
             Spacer(Modifier.height(10.dp))
             Column(
@@ -94,7 +81,6 @@ fun QrCodeScreen(onBack: () -> Unit, viewModel: QrCodeViewModel = viewModel()) {
             ) {
                 Text("Identifique-se", fontSize = 26.sp, fontWeight = FontWeight.SemiBold, color = OliusTituloMarrom)
                 Spacer(Modifier.height(24.dp))
-                // Fundo branco fixo: o QR precisa de contraste para ser lido, mesmo no tema escuro.
                 Box(
                     Modifier
                         .size(200.dp)

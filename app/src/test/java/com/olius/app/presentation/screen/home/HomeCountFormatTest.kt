@@ -5,7 +5,6 @@ import org.junit.Test
 
 /** Formato do número durante a contagem dos cards da Home. */
 class HomeCountFormatTest {
-
     @Test
     fun `no fim da contagem o texto e igual ao formato normal`() {
         listOf(0.0, 50.0, 7.5, 50.3, 999.0).forEach { value ->
@@ -17,9 +16,7 @@ class HomeCountFormatTest {
 
     @Test
     fun `durante a contagem mantem as casas decimais do valor final`() {
-        // Total inteiro: sem casa decimal no meio do caminho.
         assertEquals("12", formatCounting(12.4, 50.0, compact = false))
-        // Total com decimal: sempre 1 casa, mesmo passando por número redondo.
         assertEquals("12.0", formatCounting(12.0, 50.3, compact = false))
     }
 

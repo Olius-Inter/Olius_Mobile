@@ -9,11 +9,7 @@ data class ChatAttachment(
     val uri: String? = null
 )
 
-/**
- * Pedaço da resposta da OlivIA, na ordem em que chega. A resposta vem em
- * partes (streaming) pra tela ir montando o texto aos poucos — igual a API
- * multiagente deve fazer quando existir.
- */
+/** Pedaço da resposta da OlivIA, na ordem em que chega. */
 sealed interface OlivIAReplyChunk {
     /** Mais um trecho de texto, pra concatenar no que já chegou. */
     data class Text(val text: String) : OlivIAReplyChunk
@@ -28,7 +24,7 @@ sealed interface OlivIAReplyChunk {
     data class Conversation(val conversationId: String) : OlivIAReplyChunk
 }
 
-/** Por que a OlivIA não respondeu. A tela mostra cada caso como mensagem na conversa. */
+/** Por que a OlivIA não respondeu. */
 sealed class OlivIAException(message: String, cause: Throwable? = null) : Exception(message, cause) {
     /** A rota do chat ainda não existe no servidor (404/405). */
     class NotAvailable : OlivIAException("Chat ainda não publicado no servidor")

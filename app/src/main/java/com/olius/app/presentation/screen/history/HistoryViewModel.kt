@@ -30,15 +30,11 @@ data class HistoryUiState(
         get() = establishment?.items.orEmpty().filter { statusFilter == null || it.status == statusFilter }
 }
 
-/**
- * Aba Histórico (Figma "Histórico de Coletas" B2B / "Histórico de Registro" B2C).
- * Uma chamada só, para o tipo da conta; o filtro de status é local (não chama a API).
- */
+/** Aba Histórico. */
 class HistoryViewModel(
     private val profileType: ProfileType = AppContainer.currentProfileType(),
     private val repository: HistoryRepository = AppContainer.historyRepository
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(HistoryUiState(profileType = profileType))
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 

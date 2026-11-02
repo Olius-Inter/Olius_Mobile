@@ -35,13 +35,6 @@ data class PerfilTypeUiState(
 
     val registerName: String = "",
     val registerEmail: String = "",
-    // Fica na tela (está no Figma), mas NÃO vai para a Core: o banco não tem
-    // a coluna e a Core recusa campos desconhecidos (PEDIDOS_BANCO 1.1).
-    val registerBirthDate: String = "",
-    // Telefone: país escolhido no seletor (Brasil por padrão), número nacional
-    // só com dígitos (o que a pessoa digita; a máscara é só visual), o mesmo
-    // número com a máscara do país e, quando válido, em E.164 só com dígitos
-    // (ex.: 5511999998888), que é o formato que vai para a Core.
     val registerPhoneCountry: PhoneCountry = PhoneCountry.BRAZIL,
     val registerPhone: String = "",
     val registerPhoneFormatted: String = "",
@@ -50,11 +43,8 @@ data class PerfilTypeUiState(
     val registerPassword: String = "",
     val registerPasswordVisible: Boolean = false,
 
-    // CPF (cidadão, 11 dígitos) ou CNPJ (estabelecimento, 14), só os dígitos.
     val registerDocument: String = "",
 
-    // Só estabelecimento: tipo (lista da Core) e endereço (CEP preenche UF,
-    // cidade, bairro e rua pelo ViaCEP; a UF não aparece, como no Vire Coletor).
     val establishmentTypes: List<EstablishmentType> = emptyList(),
     val establishmentTypesStatus: LoadStatus = LoadStatus.IDLE,
     val registerEstablishmentTypeId: String? = null,
@@ -69,16 +59,10 @@ data class PerfilTypeUiState(
 
     val registerFieldErrors: Map<RegisterField, String> = emptyMap(),
 
-    // Conta do Google à espera do "Completar cadastro" (só no COMPLETE_PROFILE).
     val googleAccount: GoogleAccount? = null,
 
-    // Controla se o botão "Entrar"/"Continuar" mostra "..." e fica
-    // desabilitado enquanto a chamada à Core está em voo.
     val isAuthenticating: Boolean = false,
 
-    // Mensagem de erro pronta pra mostrar (já traduzida). Fica no uiState
-    // (não é evento único) porque deve continuar visível até a pessoa tentar
-    // de novo ou trocar de tela, mesmo que a Activity seja recriada.
     val authErrorMessage: String? = null
 ) {
     /** Tipo usado no cadastro: o escolhido no onboarding (estabelecimento se nenhum). */
@@ -108,12 +92,7 @@ data class PerfilTypeUiState(
     fun fieldError(field: RegisterField): String? = registerFieldErrors[field]
 }
 
-/**
- * Evento de navegação único. Não é um campo do [PerfilTypeUiState] de
- * propósito: um StateFlow reentrega o último valor pra quem observar de
- * novo (ex.: depois de girar a tela), o que faria a navegação disparar uma
- * segunda vez sozinha.
- */
+/** Evento de navegação único. */
 sealed class PerfilTypeNavigationEvent {
     object NavigateHome : PerfilTypeNavigationEvent()
 }

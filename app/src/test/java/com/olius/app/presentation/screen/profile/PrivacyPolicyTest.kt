@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PrivacyPolicyTest {
-
     @Test
     fun `segue as secoes do Figma e termina com os direitos`() {
         val titles = PRIVACY_POLICY_SECTIONS.map { it.title }

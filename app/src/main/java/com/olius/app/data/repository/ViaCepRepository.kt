@@ -7,18 +7,12 @@ import com.olius.app.domain.entity.CepAddress
 import com.olius.app.domain.repository.CepRepository
 import org.json.JSONObject
 
-/**
- * [CepRepository] sobre o ViaCEP (grátis, sem chave):
- * `GET ws/{cep}/json/` → `{cep, logradouro, bairro, localidade, uf, ...}`.
- * CEP que não existe volta 200 com `{"erro": true}`; formato inválido volta 400.
- */
+/** [CepRepository] sobre o ViaCEP (grátis, sem chave). */
 class ViaCepRepository(private val client: ApiClient) : CepRepository {
-
     override suspend fun lookup(cep: String): Result<CepAddress?> = runCatching {
         val body = try {
             client.get(ApiConfig.ViaCep.LOOKUP.replace("{cep}", cep))
         } catch (e: ApiException) {
-            // 400 = CEP mal formado: para a pessoa é o mesmo que "não existe".
             if (e.code == 400) return@runCatching null else throw e
         }
         parse(body)

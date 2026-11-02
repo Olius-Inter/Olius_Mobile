@@ -9,15 +9,9 @@ import com.olius.app.domain.entity.SustainabilityLevel
 import com.olius.app.domain.repository.RankingRepository
 import java.time.LocalDate
 
-/**
- * Dados das referências (ref_ranking.png / ref_ranking_2.png / ref_ranking_b2b.png)
- * para rodar sem a API (ApiConfig.USE_MOCK_RANKING = true) e nos testes.
- * Mesmo formato que a API Redis devolve: ordenado por pontos, com posição densa (1, 1, 2).
- */
 class MockRankingRepository(
     private val today: () -> LocalDate = LocalDate::now
 ) : RankingRepository {
-
     override suspend fun getRanking(category: RankingCategory): Result<RankingPage> {
         val sorted = participants.getValue(category).sortedWith(compareByDescending<Participant> { it.points }.thenBy { it.name })
         var position = 0

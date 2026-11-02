@@ -15,7 +15,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CoreAuthApiTest {
-
     private val client = mockk<ApiClient>()
     private val api = CoreAuthApi(client)
     private val tokensJson = """
@@ -141,5 +140,4 @@ class CoreAuthApiTest {
     }
 }
 
-// O org.json do Android não tem keySet(); keys() existe nos dois.
 private fun JSONObject.keyNames(): Set<String> = keys().asSequence().toSet()

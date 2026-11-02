@@ -2,6 +2,7 @@ package com.olius.app.presentation.screen.PerfilType
 
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.ColorFilter
+import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.domain.entity.PhoneCountry
 import com.olius.app.domain.entity.ProfileType
 import android.widget.Toast
@@ -22,26 +23,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -53,7 +44,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
@@ -76,62 +66,31 @@ import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusSuperficie
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-// Quanto tempo o header fica centralizado (igual ao frame final da splash)
-// antes de subir e virar linha. Ver seção "Como reposicionar" no markdown
-// de documentação pra ajustar timings/posições.
 private const val HEADER_INTRO_DURATION_MS = 1200L
 
-// Fade do "Olius" grande enquanto o pequeno (escalado) entra por cima dele.
 private const val HEADER_TEXT_EXIT_FADE_MS = 300
 
 /** Layout do header: só existem 2 estados, e a troca CENTERED->TOP acontece uma única vez. */
 private enum class HeaderLayout { CENTERED, TOP }
 
-// Tamanho da logo/texto "Olius" nos dois estados do header — ajustados pra
-// bater com o tamanho da referencia_app.png (painel "SplashScreen II" pro
-// estado centralizado, "Opção_conta" pro estado em linha). Mexa só nessas
-// constantes pra redimensionar; ver markdown pra outras formas de ajustar
-// posição/alinhamento.
 private val HEADER_CENTERED_ICON_SIZE = 210.dp
 private val HEADER_CENTERED_TEXT_SIZE = 85.sp
 internal val HEADER_ROW_ICON_SIZE = 75.dp
 internal val HEADER_ROW_TEXT_SIZE = 42.sp
 
-// Altura da linha fluida no card de escolha de tipo. Diminua pra ela ficar
-// menos esticada verticalmente, aumente pra ocupar mais espaço — ver
-// markdown pra outras formas de manipular esse tamanho.
 private val TYPE_SELECTOR_FLUID_LINE_HEIGHT = 150.dp
 
-// Altura do card de Login e do card de escolha de tipo — os dois usam o
-// MESMO valor de propósito (pedido). O card de Cadastro NÃO usa essa
-// constante: ele se autoajusta ao conteúdo (wrapContentHeight, sem
-// scroll), porque tem mais campos que os outros dois. Se cortar algo no
-// Login/escolha de tipo, aumente esse valor; se sobrar espaço em branco,
-// diminua.
 internal val AUTH_SECONDARY_CARD_HEIGHT = 580.dp
 
-// Distância entre o header (logo + "Olius") e o topo do card, quando o
-// header já subiu e virou linha. Aumente/diminua à vontade.
 internal val HEADER_TO_CARD_GAP = 16.dp
 
 /** Distância mínima entre a barra de status e o logo quando o card ocupa a tela toda. */
 private val HEADER_MIN_TOP_SPACE = 40.dp
 
-// Espaço vertical entre um campo de input e o próximo, em Login/Cadastro —
-// bem pequeno de propósito (igual ref_input.png: quase não tem
-// espaço entre eles, só a linha embaixo de cada um já separa visualmente).
 internal val AUTH_FIELD_SPACING = 2.dp
 
-/**
- * Composable raiz do fluxo de onboarding: replica o fim da splash (Função 1),
- * escolha de tipo de perfil (Função 2) e os cards de login (Função 4) /
- * cadastro (Função 3). Tudo num arquivo só de propósito — ver o markdown de
- * documentação pra entender o porquê.
- */
+/** Composable raiz do fluxo de onboarding. */
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -144,10 +103,6 @@ fun PerfilTypeScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // LaunchedEffect(Unit): a chave "Unit" nunca muda, então este bloco roda
-    // uma vez quando a tela entra em composição e fica escutando o Flow até
-    // sair de composição — é o jeito recomendado de coletar um Flow de
-    // evento único dentro do Compose (ver AUTH_01, seção 6).
     LaunchedEffect(Unit) {
         viewModel.navigationEvents.collect { event ->
             when (event) {
@@ -162,7 +117,6 @@ fun PerfilTypeScreen(
                 val account = requestGoogleAccount(context)
                 viewModel.signInWithGoogle(account)
             } catch (e: GetCredentialCancellationException) {
-                // Cancelamento não é erro — a pessoa só fechou o seletor de conta.
                 viewModel.onGoogleSignInCancelled()
             } catch (e: GetCredentialException) {
                 viewModel.onGoogleSignInCancelled()
@@ -180,7 +134,6 @@ fun PerfilTypeScreen(
         onToggleLoginPasswordVisibility = viewModel::toggleLoginPasswordVisibility,
         onUpdateRegisterName = viewModel::updateRegisterName,
         onUpdateRegisterEmail = viewModel::updateRegisterEmail,
-        onUpdateRegisterBirthDate = viewModel::updateRegisterBirthDate,
         onUpdateRegisterPhone = viewModel::updateRegisterPhone,
         phoneCountries = { viewModel.phoneCountries },
         onSelectPhoneCountry = viewModel::selectPhoneCountry,
@@ -222,7 +175,6 @@ private fun PerfilTypeContent(
     onToggleLoginPasswordVisibility: () -> Unit,
     onUpdateRegisterName: (String) -> Unit,
     onUpdateRegisterEmail: (String) -> Unit,
-    onUpdateRegisterBirthDate: (String) -> Unit,
     onUpdateRegisterPhone: (String) -> Unit,
     phoneCountries: () -> List<PhoneCountry>,
     onSelectPhoneCountry: (PhoneCountry) -> Unit,
@@ -242,14 +194,9 @@ private fun PerfilTypeContent(
         onHeaderIntroFinished()
     }
 
-    // Login e cadastro voltam para a escolha de tipo, pela seta e pelo botão voltar do celular.
     val canGoBackToProfileChoice = uiState.step == OnboardingStep.LOGIN || uiState.step == OnboardingStep.REGISTER
     BackHandler(enabled = canGoBackToProfileChoice, onBack = onBackToProfileChoice)
 
-    // Carregados aqui, durante a pausa do HEADER_INTRO (nada anima), e não no
-    // quadro em que o header vira linha: a logo é decodificada uma vez só (as
-    // duas pontas usam o mesmo painter) e a linha fluida já chega parseada no
-    // card, sem recompor no meio da transição.
     val logoPainter = painterResource(id = R.drawable.logo_sem_fundo)
     val fluidLineComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.linhafluida))
 
@@ -283,15 +230,9 @@ private fun PerfilTypeContent(
                         Modifier
                             .fillMaxSize()
                             .statusBarsPadding()
-                            // Com o teclado aberto a Column encolhe e o card rola
-                            // por dentro, em vez de ficar escondido atrás do teclado.
                             .imePadding()
                     ) {
-                        // Espaço mínimo: com o card de cadastro (alto) o logo
-                        // não cola no topo da tela. No login e no cadastro, o
-                        // "← Voltar" fica nesse espaço.
                         Box(Modifier.heightIn(min = HEADER_MIN_TOP_SPACE)) {
-                            // Nome completo: sem ele o Kotlin pega o AnimatedVisibility da Column de fora.
                             androidx.compose.animation.AnimatedVisibility(
                                 visible = canGoBackToProfileChoice,
                                 enter = fadeIn(tween(350)),
@@ -300,10 +241,6 @@ private fun PerfilTypeContent(
                                 OnboardingBackButton(onClick = onBackToProfileChoice)
                             }
                         }
-                        // Espaço flexível fica em cima — empurra o grupo
-                        // header+card pra baixo, sempre grudado no fundo da
-                        // tela (o card não usa mais Alignment.BottomCenter
-                        // interno pra isso, é essa Column que cuida).
                         Spacer(Modifier.weight(1f))
                         OnboardingHeader(
                             isRow = true,
@@ -318,7 +255,6 @@ private fun PerfilTypeContent(
                             targetState = uiState.step,
                             modifier = Modifier.fillMaxWidth(),
                             transitionSpec = {
-                                // +500ms no slide de entrada (pedido: card subindo mais devagar)
                                 (slideInVertically(
                                     animationSpec = tween(840, easing = FastOutSlowInEasing)
                                 ) { fullHeight -> fullHeight } + fadeIn(tween(350))) togetherWith
@@ -349,13 +285,11 @@ private fun PerfilTypeContent(
                                     uiState = uiState,
                                     onNameChange = onUpdateRegisterName,
                                     onEmailChange = onUpdateRegisterEmail,
-                                    onBirthDateChange = onUpdateRegisterBirthDate,
                                     onPhoneChange = onUpdateRegisterPhone,
                                     phoneCountries = phoneCountries,
                                     onSelectPhoneCountry = onSelectPhoneCountry,
                                     onPasswordChange = onUpdateRegisterPassword,
                                     onToggleVisibility = onToggleRegisterPasswordVisibility,
-                                    onForgotPassword = onForgotPassword,
                                     onGoToLogin = onGoToLogin,
                                     onContinue = onRegisterContinue,
                                     onGoogleSignInClick = onGoogleSignInClick,
@@ -382,26 +316,12 @@ private fun PerfilTypeContent(
     }
 }
 
-/** "← Voltar" no canto superior esquerdo, igual ao da tela de Esqueci a senha. */
+/** "Voltar" no canto superior esquerdo, igual ao das outras telas. */
 @Composable
 private fun OnboardingBackButton(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .padding(start = 16.dp, top = 16.dp)
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = OliusTextoPrimario, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
-        Text("Voltar", fontSize = 14.sp, color = OliusTextoPrimario)
-    }
+    OliusBackButton(onClick = onClick, modifier = Modifier.padding(start = 16.dp, top = 16.dp))
 }
 
-/**
- * Função 1: logo + "Olius" — coluna centralizada (fim da splash) que
- * "morpha" suavemente pra uma linha no topo via shared elements.
- */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun OnboardingHeader(
@@ -416,12 +336,6 @@ private fun OnboardingHeader(
             sharedContentState = rememberSharedContentState(key = "logoIcon"),
             animatedVisibilityScope = animatedScope
         )
-        // Texto: sharedBounds + scaleToBounds, não sharedElement. O
-        // sharedElement remede o filho a cada quadro com o tamanho animado,
-        // então o "Olius" (fontSize diferente nas duas pontas) pulava direto
-        // pro tamanho final e era re-diagramado a cada quadro. Aqui o texto é
-        // medido uma vez e só escalado (camada gráfica) até o novo tamanho.
-        // O de saída some por baixo do de entrada (iguais, só escalados).
         val textModifier = Modifier.sharedBounds(
             sharedContentState = rememberSharedContentState(key = "logoText"),
             animatedVisibilityScope = animatedScope,
@@ -430,9 +344,6 @@ private fun OnboardingHeader(
             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
         )
         if (isRow) {
-            // Bottom (não CenterVertically) de propósito: ícone e texto ficam
-            // "na mesma linha" (base alinhada), tipo display:flex sem
-            // align-items:center — não o ícone centralizado com o texto.
             Row(modifier = modifier, verticalAlignment = Alignment.Bottom) {
                 Image(
                     painter = logoPainter,
@@ -472,10 +383,6 @@ private fun OnboardingHeader(
     }
 }
 
-/**
- * Função 2: card de escolha "Sou Estabelecimento" / "Sou Cidadão" +
- * linha fluida (Lottie) abaixo dos cards.
- */
 @Composable
 private fun ProfileTypeSelector(
     fluidLineComposition: LottieComposition?,
@@ -484,28 +391,13 @@ private fun ProfileTypeSelector(
     onContinue: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // O conteúdo do card (textos, cards, botão, Lottie) entra um quadro depois
-    // do Surface. Este card nasce no mesmo quadro em que o header vira linha;
-    // dividir a composição em dois quadros evita um quadro longo bem no começo
-    // da animação. Não aparece: o card ainda está com alpha ~0 (fadeIn).
     var showContent by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withFrameNanos { }
         showContent = true
     }
 
-    // Esse card não usa o AuthCardScaffold (que tem scroll) porque o texto/
-    // botão precisam de padding lateral mas a linha fluida não (ela vai de
-    // ponta a ponta do card) — por isso o padding horizontal fica só na
-    // Column de dentro, não na de fora.
-    //
-    // Altura fixa em AUTH_SECONDARY_CARD_HEIGHT (mesma do LoginCard, de
-    // propósito — pedido). Quem posiciona o card grudado embaixo da tela
-    // agora é a Column de fora, em PerfilTypeContent — esse Surface só
-    // precisa do próprio tamanho, sem Box/Alignment.BottomCenter.
     Surface(
-        // Levemente mais estreito que a tela — pra estreitar mais, aumente
-        // esse padding horizontal.
         modifier = modifier
             .fillMaxWidth()
             .height(AUTH_SECONDARY_CARD_HEIGHT)
@@ -571,13 +463,6 @@ private fun ProfileTypeSelector(
                 }
             }
 
-            // Linha fluida: fica FORA da Column com padding horizontal de
-            // propósito, pra ir de ponta a ponta do card (sem o respiro de
-            // 24dp que o texto/botão têm). Altura fixa e tunável em
-            // TYPE_SELECTOR_FLUID_LINE_HEIGHT (menos esticada verticalmente
-            // do que o weight(1f) que preenchia todo o espaço restante
-            // ver markdown pra outras formas de manipular esse tamanho.
-            // A composição vem pronta de PerfilTypeContent (pré-carregada).
             LottieAnimation(
                 composition = fluidLineComposition,
                 iterations = 1,
@@ -626,7 +511,6 @@ private fun ProfileOptionCard(
                     .border(BorderStroke(1.dp, OliusCampoBorda), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // Ícones do Figma (frame "Tipo de conta"), não do Material.
                 Image(
                     painter = painterResource(iconRes),
                     contentDescription = null,
@@ -656,7 +540,6 @@ private fun ProfileOptionCard(
     }
 }
 
-/** Função 4: card de login. */
 @Composable
 private fun LoginCard(
     uiState: PerfilTypeUiState,
@@ -672,8 +555,6 @@ private fun LoginCard(
     val scrollState = rememberScrollState()
     var passwordFocused by remember { mutableStateOf(false) }
     ScrollToEndWhileFocused(scrollState, passwordFocused)
-    // Altura fixa igual ao card de escolha de tipo (AUTH_SECONDARY_CARD_HEIGHT) — pedido.
-    // Rola só quando o teclado abre e o card não cabe mais.
     AuthCardScaffold(
         modifier = modifier.height(AUTH_SECONDARY_CARD_HEIGHT),
         scrollable = true,
@@ -727,28 +608,26 @@ private fun LoginCard(
     }
 }
 
-/**
- * Rodapé comum aos cards de login e cadastro: "Esqueceu sua senha?", mensagem
- * de erro, botão principal e login social. Precisa estar dentro de uma
- * Column (usa `align`) — ver [AuthCardScaffold].
- */
+/** Rodapé comum aos cards de login e cadastro. */
 @Composable
 private fun ColumnScope.AuthCardFooter(
     uiState: PerfilTypeUiState,
     buttonText: String,
-    onForgotPassword: () -> Unit,
+    onForgotPassword: (() -> Unit)?,
     onContinue: () -> Unit,
     onGoogleSignInClick: () -> Unit
 ) {
-    Spacer(Modifier.height(8.dp))
-    Text(
-        "Esqueceu sua senha?",
-        fontSize = 12.sp,
-        color = OliusTextoSecundario,
-        modifier = Modifier
-            .align(Alignment.CenterHorizontally)
-            .clickable(onClick = onForgotPassword)
-    )
+    if (onForgotPassword != null) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Esqueceu sua senha?",
+            fontSize = 12.sp,
+            color = OliusTextoSecundario,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clickable(onClick = onForgotPassword)
+        )
+    }
     Spacer(Modifier.height(12.dp))
     AuthErrorMessage(message = uiState.authErrorMessage)
     Spacer(Modifier.height(8.dp))
@@ -763,7 +642,7 @@ private fun ColumnScope.AuthCardFooter(
     }
 }
 
-/** Mostra a mensagem de erro de autenticação, se houver — ver AUTH_01, seção 5/6. */
+/** Mostra a mensagem de erro de autenticação, se houver */
 @Composable
 internal fun AuthErrorMessage(message: String?, modifier: Modifier = Modifier) {
     if (message != null) {
@@ -777,19 +656,16 @@ internal fun AuthErrorMessage(message: String?, modifier: Modifier = Modifier) {
     }
 }
 
-/** Função 3: card de criar conta. */
 @Composable
 private fun RegisterCard(
     uiState: PerfilTypeUiState,
     onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
-    onBirthDateChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
     phoneCountries: () -> List<PhoneCountry>,
     onSelectPhoneCountry: (PhoneCountry) -> Unit,
     onPasswordChange: (String) -> Unit,
     onToggleVisibility: () -> Unit,
-    onForgotPassword: () -> Unit,
     onGoToLogin: () -> Unit,
     onContinue: () -> Unit,
     onGoogleSignInClick: () -> Unit,
@@ -831,8 +707,6 @@ private fun RegisterCard(
             error = uiState.fieldError(RegisterField.EMAIL)
         )
         Spacer(Modifier.height(AUTH_FIELD_SPACING))
-        OliusDateField(value = uiState.registerBirthDate, onValueChange = onBirthDateChange)
-        Spacer(Modifier.height(AUTH_FIELD_SPACING))
         OliusPhoneField(
             country = uiState.registerPhoneCountry,
             digits = uiState.registerPhone,
@@ -843,7 +717,6 @@ private fun RegisterCard(
             onSelectCountry = onSelectPhoneCountry
         )
         Spacer(Modifier.height(AUTH_FIELD_SPACING))
-        // CPF (cidadão) ou CNPJ + tipo + endereço (estabelecimento): o que a Core exige.
         AccountDocumentFields(uiState = uiState, actions = accountForm)
         Spacer(Modifier.height(AUTH_FIELD_SPACING))
         OliusPasswordField(
@@ -858,39 +731,21 @@ private fun RegisterCard(
         AuthCardFooter(
             uiState = uiState,
             buttonText = if (uiState.isAuthenticating) "Continuando..." else "Continuar",
-            onForgotPassword = onForgotPassword,
+            onForgotPassword = null,
             onContinue = onContinue,
             onGoogleSignInClick = onGoogleSignInClick
         )
     }
 }
 
-/**
- * Base branca com cantos superiores arredondados, comum aos cards de
- * login/cadastro. Sem scroll — quem chama passa a altura via `modifier`
- * (`LoginCard` passa `AUTH_SECONDARY_CARD_HEIGHT`; `RegisterCard` não passa
- * nenhuma, então cresce só o necessário pro conteúdo caber). Quem gruda o
- * card embaixo da tela é a Column de fora, em `PerfilTypeContent`.
- * `horizontalAlignment = CenterHorizontally` centraliza título/subtítulo
- * (que não usam fillMaxWidth) sem afetar campos/botão (que já usam
- * fillMaxWidth e ignoram o alinhamento do Column).
- */
+/** Base branca com cantos superiores arredondados, comum aos cards de login/cadastro. */
 @Composable
 internal fun AuthCardScaffold(
     modifier: Modifier = Modifier,
-    // Cadastro e "Completar cadastro" (CPF/CNPJ, tipo e endereço) passam da
-    // altura da tela: só eles rolam. Login e escolha de tipo continuam fixos.
     scrollable: Boolean = false,
     scrollState: ScrollState = rememberScrollState(),
     content: @Composable ColumnScope.() -> Unit
 ) {
-    // Sem scroll de propósito (pedido) — quem chama decide a altura pelo
-    // `modifier`: LoginCard passa uma altura fixa (AUTH_SECONDARY_CARD_HEIGHT,
-    // igual ao card de escolha de tipo); RegisterCard não passa altura
-    // nenhuma, então o Surface cresce só o necessário pro conteúdo caber
-    // (wrap content) — ele tem mais campos que os outros dois. Quem
-    // posiciona o card grudado embaixo da tela é a Column de fora, em
-    // PerfilTypeContent.
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -910,11 +765,7 @@ internal fun AuthCardScaffold(
     }
 }
 
-/**
- * Enquanto [focused] (campo de senha), rola o card até o fim: "Esqueceu sua
- * senha?" e o botão ficam à vista acima do teclado. Reage ao `maxValue`
- * porque ele cresce enquanto o teclado ainda está abrindo.
- */
+/** Enquanto [focused] (campo de senha), rola o card até o fim. */
 @Composable
 private fun ScrollToEndWhileFocused(scrollState: ScrollState, focused: Boolean) {
     LaunchedEffect(focused, scrollState.maxValue) {
@@ -936,9 +787,6 @@ internal fun ContinuarButton(
             .fillMaxWidth()
             .height(52.dp),
         shape = RoundedCornerShape(14.dp),
-        // Desabilitado (enquanto entra/cadastra) mantém as MESMAS cores: sem
-        // isso o Material usa as cores "desabilitadas" do tema, e o texto fica
-        // branco quando o celular está em modo escuro.
         colors = ButtonDefaults.buttonColors(
             containerColor = OliusAmarelo,
             contentColor = Color.Black,
@@ -948,22 +796,11 @@ internal fun ContinuarButton(
     ) {
         Text(text, fontWeight = FontWeight.Bold)
         Spacer(Modifier.width(6.dp))
-        // Placeholder pro ícone do botão — ver "Trocando os ícones sociais e a seta"
-        // no markdown de documentação pra trocar por outra imagem depois.
         Image(painter = painterResource(R.drawable.arrow), contentDescription = null, modifier = Modifier.size(16.dp))
     }
 }
 
-/**
- * Login social: Google, Facebook e Microsoft. Escondido enquanto
- * [ApiConfig.SOCIAL_LOGIN_ENABLED] for false. Só o Google já faz login de
- * verdade ([onGoogleClick] — ver AUTH_02_LOGIN_GOOGLE.md); Facebook e
- * Microsoft mostram "em breve" até serem implementados (AUTH_11).
- *
- * Tamanhos diferentes de propósito: o PNG do Google ocupa a imagem inteira,
- * os do Facebook e da Microsoft já vêm com margem interna — assim os três
- * ficam do mesmo tamanho visualmente.
- */
+/** Login social: Google, Facebook e Microsoft. */
 @Composable
 private fun SocialIconsRow(
     onGoogleClick: () -> Unit,
@@ -1002,7 +839,6 @@ private fun SocialIconsRow(
     }
 }
 
-/** Botão quadrado de login social (fundo branco + borda), igual ao design de referência. */
 @Composable
 private fun SocialLoginButton(
     iconRes: Int,
@@ -1025,22 +861,10 @@ private fun SocialLoginButton(
     }
 }
 
-// Cor do texto que a pessoa DIGITA nos campos de input (não é o placeholder,
-// que continua com OliusTextoSecundario, cinza). É a mesma cor usada nos
-// títulos dos cards ("Crie sua Conta" etc) — troque só aqui pra mudar nos
-// dois lugares de uma vez, ou troque só o valor de OliusTextoPrimario (em
-// Color.kt) se quiser mudar em TODO o app de uma vez só.
 private val AUTH_FIELD_TEXT_COLOR: Color
     @Composable @ReadOnlyComposable get() = OliusTextoPrimario
 
-/**
- * Cores compartilhadas pelos 3 campos abaixo: sem fundo/caixa visível em
- * repouso (transparente, funde com o card), uma linha fina embaixo
- * (`indicatorColor`), e um fundo amarelo bem fraco quando o campo está em
- * foco (clicado) — igual referencia_input.png. `shape = RectangleShape`
- * tira o arredondado padrão do TextField (senão pareceria uma caixinha,
- * não só uma linha).
- */
+/** Cores compartilhadas pelos 3 campos abaixo. */
 @Composable
 internal fun oliusFieldColors() = TextFieldDefaults.colors(
     unfocusedTextColor = AUTH_FIELD_TEXT_COLOR,
@@ -1058,7 +882,6 @@ internal fun OliusTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    /** Ícone do Figma (drawable); null = sem ícone. O telefone usa o OliusPhoneField (PhoneInput.kt). */
     @DrawableRes leadingIconRes: Int?,
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
@@ -1105,7 +928,6 @@ internal fun OliusPasswordField(
         placeholder = { Text(placeholder, color = OliusTextoSecundario) },
         leadingIcon = { Image(painterResource(R.drawable.ic_field_lock), contentDescription = null, modifier = Modifier.size(16.dp)) },
         trailingIcon = {
-            // O Figma só tem o olho cortado; com a senha visível ele fica amarelo.
             IconButton(onClick = onToggleVisible) {
                 Image(
                     painter = painterResource(R.drawable.ic_eye_off),
@@ -1125,56 +947,6 @@ internal fun OliusPasswordField(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun OliusDateField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var showPicker by remember { mutableStateOf(false) }
-
-    TextField(
-        value = value,
-        onValueChange = {},
-        readOnly = true,
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { showPicker = true },
-        placeholder = { Text("Data de nascimento", color = OliusTextoSecundario) },
-        leadingIcon = { Image(painterResource(R.drawable.ic_field_calendar), contentDescription = null, modifier = Modifier.size(16.dp)) },
-        trailingIcon = {
-            IconButton(onClick = { showPicker = true }) {
-                Image(painterResource(R.drawable.ic_field_calendar_end), contentDescription = "Abrir calendário", modifier = Modifier.size(16.dp))
-            }
-        },
-        singleLine = true,
-        shape = RectangleShape,
-        colors = oliusFieldColors()
-    )
-
-    if (showPicker) {
-        val state = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    state.selectedDateMillis?.let { millis ->
-                        val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
-                        onValueChange(formatter.format(Date(millis)))
-                    }
-                    showPicker = false
-                }) { Text("Confirmar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) { Text("Cancelar") }
-            }
-        ) {
-            DatePicker(state = state)
-        }
-    }
-}
-
 @Preview(showBackground = true, heightDp = 800)
 @Composable
 private fun PerfilTypeScreenPreview() {
@@ -1188,7 +960,6 @@ private fun PerfilTypeScreenPreview() {
         onToggleLoginPasswordVisibility = {},
         onUpdateRegisterName = {},
         onUpdateRegisterEmail = {},
-        onUpdateRegisterBirthDate = {},
         onUpdateRegisterPhone = {},
         phoneCountries = { emptyList() },
         onSelectPhoneCountry = {},

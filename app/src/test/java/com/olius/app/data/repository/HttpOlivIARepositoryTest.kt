@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit
 
 /** Um servidor HTTP local faz o papel da Core no POST /api/v1/chat. */
 class HttpOlivIARepositoryTest {
-
     private lateinit var server: HttpServer
     private var status = 200
     private var responseBody = """{"reply": "Olá! Posso ajudar.", "conversationId": "c-1"}"""

@@ -14,14 +14,10 @@ sealed class ConnectionErrorUiState {
     object NavigatePerfilType : ConnectionErrorUiState()
 }
 
-/**
- * Tela "Sem conexão" (Figma "Mobile / Erro"). Com sessão, volta para a Home
- * (que é recriada e carrega de novo); sem sessão, volta para o login.
- */
+/** Tela "Sem conexão". */
 class ConnectionErrorViewModel(
     private val isUserLoggedInUseCase: IsUserLoggedInUseCase = IsUserLoggedInUseCase(AppContainer.userRepository)
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow<ConnectionErrorUiState>(ConnectionErrorUiState.Idle)
     val uiState: StateFlow<ConnectionErrorUiState> = _uiState.asStateFlow()
 

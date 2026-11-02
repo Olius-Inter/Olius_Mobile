@@ -7,7 +7,10 @@ import com.olius.app.domain.entity.HomeDashboard
 import com.olius.app.domain.repository.HomeRepository
 import java.io.IOException
 import java.net.SocketTimeoutException
+import com.olius.app.data.repository.MockCollectionPointRepository
+import com.olius.app.data.repository.MockCollectorRepository
 import com.olius.app.data.repository.MockHomeRepository
+import com.olius.app.data.repository.MockTipsRepository
 import com.olius.app.data.repository.MockRankingRepository
 import com.olius.app.data.repository.MockUserProfileRepository
 import com.olius.app.data.local.InMemorySessionStore
@@ -21,13 +24,17 @@ import org.junit.Rule
 import org.junit.Test
 
 class HomeViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
     private val profiles = MockUserProfileRepository(InMemorySessionStore())
     private val viewModel by lazy {
-        HomeViewModel(MockHomeRepository(), MockRankingRepository(), profiles)
+        HomeViewModel(
+            MockHomeRepository(), MockRankingRepository(), profiles,
+            collectionPointRepository = MockCollectionPointRepository(),
+            tipsRepository = MockTipsRepository(),
+            collectorRepository = MockCollectorRepository()
+        )
     }
 
     /** Coletor (PEV): continua com os botões e ganha as abas. */
@@ -143,10 +150,8 @@ class HomeViewModelTest {
         assertEquals(ProfileType.CITIZEN, viewModel.uiState.value.profileType)
     }
 
-
     @Test
     fun `sem perfil carregado a home usa estabelecimento ate a Core responder`() {
-        // Cache vazio e /users/me sem resposta (mock): não quebra a Home.
         assertNull(profiles.cachedProfile())
 
         assertEquals(ProfileType.ESTABLISHMENT, viewModel.uiState.value.profileType)
@@ -190,7 +195,12 @@ class HomeViewModelTest {
         val failing = object : HomeRepository by MockHomeRepository() {
             override suspend fun getDashboard(): Result<HomeDashboard> = Result.failure(error)
         }
-        return HomeViewModel(failing, MockRankingRepository(), profiles)
+        return HomeViewModel(
+            failing, MockRankingRepository(), profiles,
+            collectionPointRepository = MockCollectionPointRepository(),
+            tipsRepository = MockTipsRepository(),
+            collectorRepository = MockCollectorRepository()
+        )
 
     }
 

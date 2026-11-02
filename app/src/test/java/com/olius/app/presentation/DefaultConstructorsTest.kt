@@ -21,13 +21,8 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * Garante que os ViewModels sobem com as dependências padrão (as que o app
- * usa de verdade). Sem `AppContainer.init` (teste), a sessão da Core e o
- * perfil ficam em memória e começam vazios: ninguém está logado.
- */
+/** Garante que os ViewModels sobem com as dependências padrão (as que o app usa de verdade). */
 class DefaultConstructorsTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

@@ -39,42 +39,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-// E.164 tem no máximo 15 dígitos; o número nacional nunca passa disso.
 private const val MAX_PHONE_DIGITS = 15
 private const val CEP_LENGTH = 8
 
-/**
- * Guarda o estado de todo o fluxo de onboarding (qual card está visível,
- * tipo de perfil escolhido, campos de login/cadastro) e chama os usecases de
- * autenticação da Core. Não conhece `NavController` nem HTTP — quem fala com
- * o Credential Manager do Google (precisa de Activity Context) é a própria
- * tela, que só repassa a conta escolhida para [signInWithGoogle].
- */
 class PerfilTypeViewModel(
-    // Injeção manual simples (sem Hilt/Koin no projeto ainda): o valor
-    // padrão usa a implementação real (Core); em teste, dá pra passar
-    // usecases construídos com um UserRepository fake sem mudar a assinatura.
     private val loginUseCase: LoginUseCase = LoginUseCase(AppContainer.userRepository),
     private val registerUseCase: RegisterUseCase = RegisterUseCase(AppContainer.userRepository),
     private val googleSignInUseCase: GoogleSignInUseCase = GoogleSignInUseCase(AppContainer.userRepository),
-    // `Patterns` vem do android.jar, que nos testes unitários (JVM) é só um
-    // stub (EMAIL_ADDRESS fica null) — por isso a validação é injetável.
     private val isValidEmail: (String) -> Boolean = { Patterns.EMAIL_ADDRESS.matcher(it).matches() },
-    // Depois do login, carrega o perfil da Core (GET /users/me) para o cache.
     private val syncUserProfileUseCase: SyncUserProfileUseCase = SyncUserProfileUseCase(AppContainer.userProfileRepository),
-    // DDI, máscara e validação do telefone (libphonenumber, offline).
     private val phoneNumberRepository: PhoneNumberRepository = AppContainer.phoneNumberRepository,
     private val completeGoogleSignUpUseCase: CompleteGoogleSignUpUseCase = CompleteGoogleSignUpUseCase(AppContainer.userRepository),
     private val getEstablishmentTypesUseCase: GetEstablishmentTypesUseCase = GetEstablishmentTypesUseCase(AppContainer.userRepository),
-    // ViaCEP: preenche o endereço do estabelecimento.
     private val cepRepository: CepRepository = AppContainer.cepRepository
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(PerfilTypeUiState())
     val uiState: StateFlow<PerfilTypeUiState> = _uiState.asStateFlow()
 
-    // Canal de eventos únicos — ver PerfilTypeUiState.kt pro porquê de não
-    // ser um campo comum dentro do PerfilTypeUiState.
     private val _navigationEvents = Channel<PerfilTypeNavigationEvent>(Channel.BUFFERED)
     val navigationEvents: Flow<PerfilTypeNavigationEvent> = _navigationEvents.receiveAsFlow()
 
@@ -84,7 +65,7 @@ class PerfilTypeViewModel(
         _uiState.update { it.copy(step = OnboardingStep.CHOOSE_PROFILE) }
     }
 
-    /** No onboarding e no "Completar cadastro". Trocar o tipo apaga o CPF/CNPJ (tamanhos diferentes). */
+    /** No onboarding e no "Completar cadastro". */
     fun selectProfileType(type: ProfileType) {
         _uiState.update {
             if (it.selectedProfileType == type) it
@@ -135,10 +116,6 @@ class PerfilTypeViewModel(
 
     fun updateRegisterEmail(value: String) = updateField(RegisterField.EMAIL) { it.copy(registerEmail = value) }
 
-    fun updateRegisterBirthDate(value: String) {
-        _uiState.update { it.copy(registerBirthDate = value) }
-    }
-
     /** Países do seletor de telefone (bandeira + nome em português + DDI). */
     val phoneCountries: List<PhoneCountry> by lazy { phoneNumberRepository.countries() }
 
@@ -153,8 +130,6 @@ class PerfilTypeViewModel(
         _uiState.update { it.withPhone(country, it.registerPhone) }
     }
 
-    // Recalcula máscara e E.164 juntos, pra nunca ficarem de países diferentes.
-    // Qualquer mudança no telefone apaga o erro até a próxima tentativa.
     private fun PerfilTypeUiState.withPhone(country: PhoneCountry, digits: String) = copy(
         registerPhoneCountry = country,
         registerPhone = digits,
@@ -213,7 +188,6 @@ class PerfilTypeViewModel(
         _uiState.update { it.copy(cepStatus = CepStatus.LOADING) }
         cepJob = viewModelScope.launch {
             val result = cepRepository.lookup(cep)
-            // A pessoa pode ter mudado o CEP enquanto a resposta vinha.
             if (_uiState.value.registerCep != cep) return@launch
             result
                 .onSuccess { address ->
@@ -224,7 +198,6 @@ class PerfilTypeViewModel(
         }
     }
 
-    // Campo vazio no ViaCEP não apaga o que a pessoa digitou.
     private fun fillAddress(address: CepAddress) {
         _uiState.update {
             it.copy(
@@ -240,7 +213,6 @@ class PerfilTypeViewModel(
         }
     }
 
-    // Lista de tipos: só para estabelecimento, uma vez (ou de novo depois de erro).
     private fun loadEstablishmentTypesIfNeeded() {
         val state = _uiState.value
         if (state.registrationType != ProfileType.ESTABLISHMENT) return
@@ -255,7 +227,7 @@ class PerfilTypeViewModel(
         }
     }
 
-    /** Login com e-mail/senha. Chamado pelo botão "Entrar" do LoginCard. */
+    /** Login com e-mail/senha. */
     fun login() {
         val state = _uiState.value
         val validationError = when {
@@ -277,7 +249,7 @@ class PerfilTypeViewModel(
         }
     }
 
-    /** Cadastro com senha. Chamado pelo botão "Continuar" do RegisterCard. */
+    /** Cadastro com senha. */
     fun register() {
         val password = _uiState.value.registerPassword
         val registration = validateRegistration(requirePassword = true) ?: return
@@ -329,7 +301,6 @@ class PerfilTypeViewModel(
             completeGoogleSignUpUseCase(account.idToken, registration)
                 .onSuccess { onAuthSuccess() }
                 .onFailure { error ->
-                    // 401 aqui = o ID token do Google venceu ou não foi aceito.
                     if (error is InvalidCredentialsException) onAuthFailure("Não foi possível confirmar sua conta Google. Entre com o Google de novo")
                     else onAuthFailure(mapRegistrationError(error))
                 }
@@ -341,11 +312,6 @@ class PerfilTypeViewModel(
         _uiState.update { it.copy(isAuthenticating = false) }
     }
 
-    /**
-     * Confere todos os campos do cadastro (cada erro aparece embaixo do seu
-     * campo; o primeiro também aparece perto do botão) e monta o que vai
-     * para a Core. null = tem erro.
-     */
     private fun validateRegistration(requirePassword: Boolean): AccountRegistration? {
         val state = _uiState.value
         val errors = linkedMapOf<RegisterField, String>()
@@ -370,8 +336,6 @@ class PerfilTypeViewModel(
                 errors[RegisterField.PASSWORD] = "A senha precisa ter: " + unmet.joinToString(", ") { it.message.lowercase() }
             }
         }
-        // Telefone é opcional (a Core aceita a lista vazia), mas se veio tem
-        // que ser válido para o país escolhido.
         val phoneError = if (state.registerPhone.isNotEmpty() && state.registerPhoneE164 == null) {
             "Telefone inválido para ${state.registerPhoneCountry.name}"
         } else null
@@ -425,15 +389,11 @@ class PerfilTypeViewModel(
         }
     }
 
-    // Muda um campo do cadastro e apaga o erro dele até a próxima tentativa.
     private fun updateField(field: RegisterField, change: (PerfilTypeUiState) -> PerfilTypeUiState) {
         _uiState.update { change(it).copy(registerFieldErrors = it.registerFieldErrors - field) }
     }
 
-    /**
-     * Sessão da Core aberta: antes de ir pra Home, carrega o perfil
-     * (GET /users/me) para o cache. O tipo da conta vem da Core, não do toggle.
-     */
+    /** Sessão da Core aberta: antes de ir pra Home, carrega o perfil (GET /users/me) para o cache. */
     private fun onAuthSuccess() {
         viewModelScope.launch {
             syncUserProfileUseCase()
@@ -446,8 +406,6 @@ class PerfilTypeViewModel(
         _uiState.update { it.copy(isAuthenticating = false, authErrorMessage = message) }
     }
 
-    // Exceções do domínio → mensagens em português. Fica no ViewModel (não no
-    // repositório) porque é texto voltado pra UI.
     private fun mapLoginError(error: Throwable): String = when (error) {
         is InvalidCredentialsException -> "E-mail ou senha incorretos"
         else -> commonError(error) ?: "Não foi possível entrar. Tente novamente"
@@ -467,7 +425,6 @@ class PerfilTypeViewModel(
             "Confira os campos destacados"
         }
         is AuthUnavailableException -> "O cadastro com Google ainda não está disponível no servidor"
-        // Cadastro aceito, mas o login automático logo depois foi recusado.
         is InvalidCredentialsException -> "Cadastro feito. Entre com seu e-mail e senha"
         else -> commonError(error) ?: "Não foi possível concluir o cadastro. Tente novamente"
     }
@@ -478,7 +435,6 @@ class PerfilTypeViewModel(
         else -> null
     }
 
-    // Campos que a Core recusou (400 VALIDATION_ERROR) → erro embaixo deles.
     private fun markInvalidFields(fields: List<String>) {
         val marked = fields.mapNotNull { CORE_FIELDS[it.substringBefore('[')] }.associateWith { "Valor inválido" }
         if (fields.any { it.startsWith("telephones") }) {
@@ -488,7 +444,6 @@ class PerfilTypeViewModel(
     }
 
     private companion object {
-        // Nome do campo no DTO da Core → campo da tela.
         val CORE_FIELDS = mapOf(
             "name" to RegisterField.NAME,
             "email" to RegisterField.EMAIL,

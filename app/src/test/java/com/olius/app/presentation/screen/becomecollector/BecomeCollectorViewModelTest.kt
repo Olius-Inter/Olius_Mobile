@@ -16,7 +16,6 @@ import org.junit.Test
 import java.io.IOException
 
 class BecomeCollectorViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 

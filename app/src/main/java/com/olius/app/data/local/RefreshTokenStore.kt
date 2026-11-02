@@ -15,12 +15,7 @@ data class StoredRefreshToken(val token: String, val expiresAtMillis: Long?) {
     override fun toString() = "StoredRefreshToken[redacted]"
 }
 
-/**
- * Onde o refresh token fica entre uma abertura do app e outra. O access token
- * NUNCA passa por aqui: ele fica só na memória (CoreSessionRepository).
- * [save] é síncrono de propósito: o refresh novo precisa estar gravado antes
- * de qualquer outra chamada à Core (o antigo já foi consumido).
- */
+/** Onde o refresh token fica entre uma abertura do app e outra. */
 interface RefreshTokenStore {
     fun load(): StoredRefreshToken?
     fun save(token: StoredRefreshToken)
@@ -34,20 +29,15 @@ class InMemoryRefreshTokenStore : RefreshTokenStore {
     override fun clear() { token = null }
 }
 
-/** Cifra e decifra textos curtos. Interface para os testes não dependerem do Keystore. */
+/** Cifra e decifra textos curtos. */
 interface SecretCipher {
     fun encrypt(plain: String): String
     /** null se não der para decifrar (ex.: chave apagada ou backup restaurado em outro aparelho). */
     fun decrypt(encoded: String): String?
 }
 
-/**
- * AES-256/GCM com a chave gerada e guardada no Android Keystore: a chave
- * nunca sai do aparelho (nem no backup), então o texto salvo não serve fora dele.
- * Formato salvo: Base64(IV de 12 bytes + texto cifrado com a tag).
- */
+/** AES-256/GCM com a chave gerada e guardada no Android Keystore. */
 class KeystoreSecretCipher(private val alias: String = KEY_ALIAS) : SecretCipher {
-
     override fun encrypt(plain: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key())
@@ -86,16 +76,11 @@ class KeystoreSecretCipher(private val alias: String = KEY_ALIAS) : SecretCipher
     }
 }
 
-/**
- * Refresh token cifrado ([cipher]) em SharedPreferences próprias
- * (`olius_auth`, fora do backup — ver res/xml/backup_rules.xml).
- * Se não der para decifrar, a sessão salva é descartada (a pessoa entra de novo).
- */
+/** Refresh token cifrado ([cipher]) em SharedPreferences próprias. */
 class EncryptedRefreshTokenStore(
     context: Context,
     private val cipher: SecretCipher = KeystoreSecretCipher()
 ) : RefreshTokenStore {
-
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override fun load(): StoredRefreshToken? {
@@ -106,7 +91,6 @@ class EncryptedRefreshTokenStore(
     }
 
     override fun save(token: StoredRefreshToken) {
-        // commit() (e não apply()): grava no disco antes de seguir.
         prefs.edit()
             .putString(KEY_TOKEN, cipher.encrypt(token.token))
             .putLong(KEY_EXPIRES_AT, token.expiresAtMillis ?: NO_EXPIRY)

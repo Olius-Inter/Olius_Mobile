@@ -29,7 +29,6 @@ import java.net.InetSocketAddress
 import java.time.Instant
 
 class CoreSessionRepositoryTest {
-
     private val api = mockk<CoreAuthApi>(relaxUnitFun = true)
     private val store = InMemoryRefreshTokenStore()
     private var now = 1_000_000L
@@ -210,7 +209,6 @@ class CoreSessionRepositoryTest {
         advanceUntilIdle()
 
         coVerify(exactly = 1) { api.logout("a-2") }
-        // O refresh usado só para o logout não volta para o aparelho.
         assertNull(store.load())
     }
 

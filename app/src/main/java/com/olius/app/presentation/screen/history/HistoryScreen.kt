@@ -61,10 +61,7 @@ import com.olius.app.presentation.theme.OliusVerdeAberto
 import com.olius.app.presentation.theme.OliusSuperficie
 import java.util.Locale
 
-/**
- * Aba Histórico. B2B: "Histórico de Coletas" (filtros + tabela Data/Volume/Status).
- * B2C: "Histórico de Registro" (cards por entrega). Ver Figma "Olius - Geral".
- */
+/** Aba Histórico. */
 private val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
 
 @Composable
@@ -83,7 +80,6 @@ fun HistoryScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             if (state.isOffline) {
-                // Sem conexão: a NavGraph abre a tela cheia "Mobile / Erro".
                 LaunchedEffect(Unit) { onConnectionError() }
                 return@Column
             }
@@ -160,7 +156,6 @@ private fun StatusFilters(selected: CollectionStatus?, onSelect: (CollectionStat
     }
 }
 
-/** "Table-report": cabeçalho cinza + linhas Data / Volume / Status. */
 @Composable
 private fun CollectionsTable(state: HistoryUiState) {
     Surface(
@@ -214,7 +209,6 @@ private fun TableRow(
     }
 }
 
-/** "Dados-Historico-B2C": litros, data, água preservada, CO₂ evitado e biodiesel gerado. */
 @Composable
 private fun DisposalRecordCard(record: DisposalRecord) {
     Surface(
@@ -235,7 +229,6 @@ private fun DisposalRecordCard(record: DisposalRecord) {
                     Text(
                         buildAnnotatedString {
                             withStyle(SpanStyle(color = OliusAzulAgua, fontSize = 14.sp)) {
-                                // Figma: "550.000L" — milhar com ponto (pt-BR).
                                 append(String.format(PT_BR, "%,.0f", record.waterPreservedLiters))
                             }
                             withStyle(SpanStyle(color = OliusTextoCardSecundario, fontSize = 11.sp)) { append("L") }
@@ -248,7 +241,7 @@ private fun DisposalRecordCard(record: DisposalRecord) {
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 ImpactBox("CO₂ Evitado", "${formatNumber(record.co2AvoidedKg)}kg", OliusVerdeAberto, Modifier.weight(1f))
-                ImpactBox("Biodisel gerado", "${formatNumber(record.biodieselKg)}kg", OliusLaranjaBiodiesel, Modifier.weight(1f))
+                ImpactBox("Biodiesel gerado", "${formatNumber(record.biodieselLiters)}L", OliusLaranjaBiodiesel, Modifier.weight(1f))
             }
         }
     }

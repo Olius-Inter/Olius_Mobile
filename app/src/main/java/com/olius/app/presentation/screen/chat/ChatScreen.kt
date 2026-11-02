@@ -106,21 +106,13 @@ import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusTituloMarrom
 import com.olius.app.presentation.theme.OliusSuperficie
 
-// Perguntas de exemplo da tela de boas-vindas — as mesmas das referências,
-// pra dar pra ver as respostas mockadas (relatório e impactos) com um toque.
 private const val SUGGESTION_REPORT =
     "OlivIA, registrei 67 litros de óleo no mês passado, isso é bom? Faça um relatório sustentável."
 private const val SUGGESTION_IMPACT = "Quais são os impactos ambientais de não registrar o meu óleo?"
 
-// Botão "Enviar" desabilitado (campo vazio): mesmo botão, mais claro.
 private const val DISABLED_BUTTON_ALPHA = 0.35f
 
-/**
- * Tela da OlivIA. Sem mensagens mostra as boas-vindas (ref_chat.png); com
- * mensagens, a conversa (ref_chat_message.png). O "+" abre o menu de
- * Câmera/Arquivos/Fotos (ref_chat_plus.png), cada um abrindo o app/seletor
- * correspondente do celular.
- */
+/** Tela da OlivIA. */
 @Composable
 fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -139,7 +131,6 @@ fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewMod
                 MessagesList(messages = state.messages, isGenerating = state.isGenerating)
             }
 
-            // Fecha o menu ao escolher — se a pessoa cancelar o seletor, não fica aberto.
             AttachmentMenu(
                 visible = state.isAttachmentMenuOpen,
                 onDismiss = viewModel::onDismissAttachmentMenu,
@@ -163,7 +154,6 @@ fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewMod
             onSend = viewModel::onSend,
             onStop = viewModel::onStopGenerating
         )
-        // O campo fica logo acima do menu inferior (que é sobreposto — ver MainScaffoldScreen).
         Spacer(
             Modifier
                 .navigationBarsPadding()
@@ -171,10 +161,6 @@ fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewMod
         )
     }
 }
-
-// ---------------------------------------------------------------------------
-// Boas-vindas (ref_chat.png)
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun WelcomeContent(onSuggestionClick: (String) -> Unit) {
@@ -211,11 +197,7 @@ private fun WelcomeContent(onSuggestionClick: (String) -> Unit) {
     }
 }
 
-/**
- * Logo da Olius + estrela de 4 pontas (ref_chat.png). Usa a logo grande em
- * vez do ícone da navbar (`chat_olius_selected`), que é pequeno e fica
- * pixelado ampliado.
- */
+/** Logo da Olius + estrela de 4 pontas. */
 @Composable
 private fun OlivIAIllustration() {
     Box(Modifier.size(width = 190.dp, height = 180.dp)) {
@@ -262,14 +244,9 @@ private fun SuggestionChip(text: String, onClick: () -> Unit) {
     )
 }
 
-// ---------------------------------------------------------------------------
-// Conversa (ref_chat_message.png)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun MessagesList(messages: List<ChatMessage>, isGenerating: Boolean) {
     val listState = rememberLazyListState()
-    // Acompanha a resposta enquanto ela chega: rola até o fim a cada mudança.
     LaunchedEffect(messages) {
         listState.scrollToItem(messages.lastIndex, scrollOffset = 10_000)
     }
@@ -375,10 +352,6 @@ private fun PulsingText(text: String) {
     Text(text, fontSize = 14.sp, color = OliusTextoSecundario, modifier = Modifier.alpha(alpha))
 }
 
-// ---------------------------------------------------------------------------
-// Campo de texto + menu "+" (ref_chat_plus.png)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun ChatInputBar(
     value: String,
@@ -426,8 +399,6 @@ private fun ChatInputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        // Gerando: "Parar". Fora isso é sempre "Enviar", mais claro e sem clique
-        // enquanto não há o que mandar (só espaços contam como vazio).
         val (icon, description, action) =
             if (isGenerating) Triple(Icons.Filled.Stop, "Parar resposta", onStop)
             else Triple(Icons.Filled.ArrowUpward, "Enviar", onSend)
@@ -446,12 +417,7 @@ private fun ChatInputBar(
     }
 }
 
-/**
- * Menu do "+" num Popup focável, no canto inferior esquerdo da área da
- * conversa: tocar em qualquer lugar fora dele (header, campo de texto, o
- * próprio "+") só fecha o menu. O Popup continua na tela até a animação de
- * saída terminar.
- */
+/** Menu do "+" num Popup focável, no canto inferior esquerdo da área da conversa. */
 @Composable
 private fun AttachmentMenu(
     visible: Boolean,
@@ -528,20 +494,13 @@ private fun PendingAttachmentChip(attachment: ChatAttachment, onRemove: () -> Un
     }
 }
 
-// ---------------------------------------------------------------------------
-// Seletores do sistema (câmera, arquivos, galeria)
-// ---------------------------------------------------------------------------
-
 private class AttachmentPickers(
     val openCamera: () -> Unit,
     val openFiles: () -> Unit,
     val openPhotos: () -> Unit
 )
 
-/**
- * Nenhum dos 3 precisa de permissão: a câmera é aberta pelo app de câmera do
- * sistema (TakePicturePreview) e arquivos/fotos pelos seletores do Android.
- */
+/** Nenhum dos 3 precisa de permissão. */
 @Composable
 private fun rememberAttachmentPickers(context: Context, onPicked: (ChatAttachment) -> Unit): AttachmentPickers {
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->

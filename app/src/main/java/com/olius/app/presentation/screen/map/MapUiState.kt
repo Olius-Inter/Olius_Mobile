@@ -9,10 +9,6 @@ import com.olius.app.domain.entity.PointSuggestion
 /** Posição (latitude/longitude) da pessoa, vinda do GPS. */
 data class UserLocation(val latitude: Double, val longitude: Double)
 
-/**
- * Pedido para o mapa mover a câmera. [id] muda a cada pedido, assim o mesmo
- * destino pedido duas vezes ainda anima (o OsmMapView só reage a id novo).
- */
 data class CameraRequest(val latitude: Double, val longitude: Double, val zoom: Double, val id: Long)
 
 /** Tipos que o mapa mostra e filtra: os mesmos do resto do app (só PEV). */

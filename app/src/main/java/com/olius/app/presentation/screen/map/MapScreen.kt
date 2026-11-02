@@ -113,12 +113,7 @@ private val MAP_HEIGHT = 320.dp
 private val ClosedRed = Color(0xFFD64545)
 private val WhatsAppGreen = Color(0xFF25D366)
 
-/**
- * Tela "Pontos de Coleta": mapa real (OpenStreetMap), busca com
- * autocomplete, filtro por tipo, lista dos pontos mais próximos e a ficha do
- * ponto (rota, ligar, WhatsApp, CNPJ). Tocar num pin, num card ou numa
- * sugestão da busca abre a ficha.
- */
+/** Tela "Pontos de Coleta": mapa real (OpenStreetMap). */
 @Composable
 fun MapScreen(
     topBarState: OliusTopBarState,
@@ -137,7 +132,6 @@ fun MapScreen(
     val state by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
 
-    // GPS: lê a posição e centraliza o mapa na pessoa.
     val locateUser: () -> Unit = {
         scope.launch {
             val location = currentDeviceLocation(context)
@@ -151,7 +145,6 @@ fun MapScreen(
     val onMyLocationClick: () -> Unit = {
         if (hasLocationPermission(context)) locateUser() else permissionLauncher.launch(LOCATION_PERMISSIONS)
     }
-    // Já tem permissão (concedida antes): localiza sozinho ao abrir, sem perguntar de novo.
     LaunchedEffect(Unit) {
         if (hasLocationPermission(context) && state.userLocation == null) locateUser()
     }
@@ -182,7 +175,7 @@ fun MapScreen(
                 state = state,
                 onSearchQueryChange = viewModel::onSearchQueryChange,
                 onSuggestionClick = { suggestion ->
-                    focusManager.clearFocus() // fecha o teclado para a ficha aparecer inteira
+                    focusManager.clearFocus()
                     viewModel.onSuggestionSelected(suggestion)
                 },
                 onPointClick = viewModel::onPointSelected,
@@ -190,7 +183,6 @@ fun MapScreen(
                 onMyLocationClick = onMyLocationClick,
                 onBecomeCollectorClick = onBecomeCollector.takeIf { state.canBecomeCollector }
             )
-            // Com um tipo só (PEV) o filtro não tem o que escolher.
             if (MAP_FILTER_TYPES.size > 1) {
                 Spacer(Modifier.height(12.dp))
                 TypeFilterRow(activeTypes = state.activeTypes, onToggle = viewModel::onToggleType)
@@ -224,10 +216,6 @@ fun MapScreen(
         )
     }
 }
-
-// ---------------------------------------------------------------------------
-// Aviso "Vire um ponto de Coleta"
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun BecomeCollectorBanner(onClick: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
@@ -287,10 +275,6 @@ private fun BecomeCollectorDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) 
     )
 }
 
-// ---------------------------------------------------------------------------
-// Mapa real + busca com autocomplete
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun CollectionMap(
     state: MapUiState,
@@ -318,7 +302,6 @@ private fun CollectionMap(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Exigido pela política de uso dos tiles do OpenStreetMap.
         Text(
             "© OpenStreetMap",
             fontSize = 9.sp,
@@ -459,10 +442,6 @@ private fun SuggestionList(suggestions: List<PointSuggestion>, onClick: (PointSu
     }
 }
 
-// ---------------------------------------------------------------------------
-// Filtro por tipo (legenda do mapa)
-// ---------------------------------------------------------------------------
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TypeFilterRow(activeTypes: Set<CollectionPointType>, onToggle: (CollectionPointType) -> Unit) {
@@ -493,10 +472,6 @@ private fun TypeFilterRow(activeTypes: Set<CollectionPointType>, onToggle: (Coll
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Lista de pontos próximos
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun CollectionPointCard(point: CollectionPoint, onClick: () -> Unit) {
@@ -566,14 +541,7 @@ private fun OpeningHours(openingHours: String, isOpenNow: Boolean) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Ficha do ponto: onde fica, como chegar, contato e dados que a empresa publicou
-// ---------------------------------------------------------------------------
-
-/**
- * Abre na hora com o [summary] do pin e completa com os [details] quando a
- * API responde. Campo nulo não aparece (PEV sem CNPJ não fica com buraco).
- */
+/** Abre na hora com o [summary] do pin e completa com os [details] quando a API responde. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun PointDetailsSheet(
@@ -623,7 +591,6 @@ private fun PointDetailsSheet(
             }
             openingHours?.let { OpeningHours(it, isOpenNow) }
 
-            // Ações: rota (app de mapas do aparelho), ligar (discador) e WhatsApp.
             Spacer(Modifier.height(18.dp))
             if (latitude != null && longitude != null) {
                 Button(
@@ -731,14 +698,7 @@ private fun ActionOutlinedButton(label: String, icon: ImageVector, tint: Color, 
     }
 }
 
-// ---------------------------------------------------------------------------
-// Intents: rota, discador, WhatsApp e área de transferência
-// ---------------------------------------------------------------------------
-
-/**
- * Rota sem API própria: abre o app de mapas instalado (Google Maps, Waze...).
- * Tenta navegação direta; se não houver app, cai no "geo:" e, por último, no site do OSM.
- */
+/** Rota sem API própria: abre o app de mapas instalado (Google Maps, Waze...). */
 private fun openDirections(context: Context, latitude: Double, longitude: Double, name: String) {
     val intents = listOf(
         Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$latitude,$longitude")),
@@ -750,7 +710,6 @@ private fun openDirections(context: Context, latitude: Double, longitude: Double
             context.startActivity(intent)
             return
         } catch (_: ActivityNotFoundException) {
-            // tenta o próximo
         }
     }
     Toast.makeText(context, "Nenhum app de mapas encontrado", Toast.LENGTH_SHORT).show()
@@ -778,10 +737,6 @@ private fun copyToClipboard(context: Context, label: String, value: String) {
     context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(label, value))
     Toast.makeText(context, "$label copiado", Toast.LENGTH_SHORT).show()
 }
-
-// ---------------------------------------------------------------------------
-// Formatação
-// ---------------------------------------------------------------------------
 
 private fun addressWithDistance(address: String, distanceKm: Double?): String =
     distanceKm?.let { "$address · ${formatDistance(it)}" } ?: address

@@ -18,28 +18,19 @@ import com.olius.app.presentation.screen.error.ConnectionErrorScreen
 import com.olius.app.presentation.screen.qrcode.QrCodeScreen
 import com.olius.app.presentation.splash.SplashRoute
 
-/**
- * Saída da Splash e da Main quando o destino é o PerfilType: a tela de baixo
- * fica parada (opaca) enquanto o PerfilType entra com o fade padrão por cima.
- * O crossfade padrão do NavHost (as duas telas com alpha ao mesmo tempo)
- * deixava aparecer o fundo da janela no meio da troca e desenhava as duas
- * telas em camadas fora da tela. Para os outros destinos, mantém o padrão.
- */
+/** Saída da Splash e da Main quando o destino é o PerfilType. */
 private val exitKeepingScreenUnderPerfilType:
     AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
     if (targetState.destination.route == Routes.PerfilType.route) ExitTransition.None
     else fadeOut(tween(NAV_DEFAULT_FADE_MS))
 }
 
-// Mesma duração do fade padrão do NavHost (700 ms).
 private const val NAV_DEFAULT_FADE_MS = 700
 
 @Composable
 fun NavGraph(
     navController: NavHostController
 ) {
-    // Sessão da Core acabou sozinha (refresh recusado): volta para o login,
-    // limpando a pilha. O logout pelo botão já navega por conta própria.
     LaunchedEffect(navController) {
         AppContainer.sessionExpired.collect {
             val current = navController.currentDestination?.route
@@ -95,7 +86,6 @@ fun NavGraph(
                     }
                 },
                 onOpenQrCode = { navController.navigate(Routes.QrCode.route) },
-                // Sem conexão: tira a Main da pilha; ao voltar, ela é recriada e carrega de novo.
                 onConnectionError = {
                     navController.navigate(Routes.ConnectionError.route) {
                         popUpTo(Routes.Main.route) { inclusive = true }
@@ -104,11 +94,9 @@ fun NavGraph(
                 }
             )
         }
-        // Tela cheia, sem menu inferior (Figma "Mobile / identificação").
         composable(Routes.QrCode.route) {
             QrCodeScreen(onBack = { navController.popBackStack() })
         }
-        // Figma "Mobile / Erro": tela cheia, sem menu inferior.
         composable(Routes.ConnectionError.route) {
             ConnectionErrorScreen(
                 onNavigateHome = {

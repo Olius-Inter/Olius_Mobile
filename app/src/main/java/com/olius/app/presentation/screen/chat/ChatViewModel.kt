@@ -29,11 +29,10 @@ fun OlivIAException.toChatText(): String = when (this) {
     is OlivIAException.Unknown -> "Não consegui responder agora. Tente de novo."
 }
 
-/** Repositório (mock ou Core) escolhido pela flag `ApiConfig.USE_MOCK_OLIVIA`. */
+/** Chat na Core (que repassa para a IA). */
 class ChatViewModel(
     private val repository: OlivIARepository = AppContainer.olivIARepository
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
@@ -108,7 +107,6 @@ class ChatViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Parou no meio? Fica "Resposta interrompida", não o erro da conexão fechada.
                 ensureActive()
                 val error = e as? OlivIAException ?: OlivIAException.Unknown(e)
                 updateMessage(reply.id) { it.append(OlivIAReplyChunk.Text(error.toChatText())) }

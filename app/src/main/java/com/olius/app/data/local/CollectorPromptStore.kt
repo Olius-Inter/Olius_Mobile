@@ -4,11 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 
-/**
- * Guarda quando o aviso "Vire um ponto de Coleta" (tela de Mapa) apareceu
- * pela última vez — é o que permite mostrar ele uma vez e só de novo depois
- * de 10 dias (ver `MapViewModel`).
- */
+/** Guarda quando o aviso "Vire um ponto de Coleta" (tela de Mapa) apareceu pela última vez. */
 interface CollectorPromptStore {
     fun lastShownAtMillis(): Long?
     fun markShown(atMillis: Long)
@@ -17,7 +13,6 @@ interface CollectorPromptStore {
 class SharedPrefsCollectorPromptStore(
     private val prefs: SharedPreferences
 ) : CollectorPromptStore {
-
     constructor(context: Context) : this(
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     )

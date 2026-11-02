@@ -31,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.outlined.ContactPage
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Lock
@@ -40,7 +39,6 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
@@ -48,11 +46,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.olius.app.presentation.components.OliusBackButton
 import com.olius.app.R
 import com.olius.app.domain.entity.ThemeMode
 import com.olius.app.presentation.components.BOTTOM_NAV_CONTENT_PADDING
@@ -81,15 +80,10 @@ import com.olius.app.presentation.theme.OliusTextoPrimarioClaro
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusVerdeAberto
 
-// Altura do cabeçalho amarelo e tamanho do avatar (Mobile V2/Perfil/Perfil.png).
 private val HEADER_HEIGHT = 230.dp
 private val AVATAR_SIZE = 96.dp
 
-/**
- * Tela de Perfil (Figma "Mobile V2/Perfil"), dentro do MainScaffoldScreen: o
- * menu inferior continua na tela. Sem "Ajuda & Suporte" e sem trocar foto
- * (o banco não tem coluna de foto: o avatar mostra as iniciais).
- */
+/** Tela de Perfil, dentro do MainScaffoldScreen: o menu inferior continua na tela. */
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
@@ -101,7 +95,6 @@ fun ProfileScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Roda de novo sempre que a tela volta (ex.: depois do "Editar Perfil").
     LaunchedEffect(Unit) { viewModel.reloadFromCache() }
 
     Box(
@@ -145,7 +138,6 @@ fun ProfileScreen(
             ProfileCard {
                 ProfileRow(Icons.Outlined.ContactPage, "Editar informações de perfil", onClick = onEditProfile)
                 ProfileRow(Icons.Outlined.DarkMode, "Tema", value = state.themeMode.label, onClick = viewModel::onThemeClick)
-                // Só existe português: o item aparece, mas não abre nada.
                 ProfileRow(Icons.Outlined.Translate, "Idioma", value = state.language)
                 ProfileRow(
                     Icons.Outlined.Notifications,
@@ -165,7 +157,7 @@ fun ProfileScreen(
             }
             Spacer(Modifier.height(20.dp))
             ProfileCard {
-                ProfileRow(Icons.Outlined.MailOutline, "Fale conosco") { openSupportEmail(context, state.supportEmail) }
+                ProfileRow(Icons.Outlined.MailOutline, "Fale conosco", onClick = { openSupportEmail(context, state.supportEmail) })
                 ProfileRow(Icons.Outlined.Lock, "Política de Privacidade", onClick = onPrivacyPolicy)
             }
             Spacer(Modifier.height(24.dp))
@@ -202,17 +194,12 @@ private fun ProfileHeader(initials: String, onBack: () -> Unit) {
                 .clip(CurvedBottomShape)
                 .background(OliusAmarelo)
         )
-        IconButton(
+        OliusBackButton(
             onClick = onBack,
             modifier = Modifier
                 .statusBarsPadding()
                 .padding(start = 16.dp, top = 8.dp)
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.White)
-        ) {
-            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Voltar", tint = OliusTextoPrimarioClaro)
-        }
+        )
         Row(
             Modifier
                 .align(Alignment.TopCenter)
@@ -229,7 +216,6 @@ private fun ProfileHeader(initials: String, onBack: () -> Unit) {
             Spacer(Modifier.width(6.dp))
             Text("Olius", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold)
         }
-        // Sem foto no banco: iniciais no lugar da foto e sem o lápis de "trocar foto".
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
@@ -244,7 +230,6 @@ private fun ProfileHeader(initials: String, onBack: () -> Unit) {
     }
 }
 
-/** Retângulo com a base em arco (a curva do cabeçalho na referência). */
 private val CurvedBottomShape = GenericShape { size, _ ->
     val curve = size.height * 0.16f
     moveTo(0f, 0f)

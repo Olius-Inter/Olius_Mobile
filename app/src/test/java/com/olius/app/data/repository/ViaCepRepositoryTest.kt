@@ -6,7 +6,6 @@ import org.junit.Test
 
 /** Leitura da resposta do ViaCEP (sem rede). */
 class ViaCepRepositoryTest {
-
     @Test
     fun `resposta valida vira endereco com UF`() {
         val body = """{"cep":"01001-000","logradouro":"Praça da Sé","bairro":"Sé",

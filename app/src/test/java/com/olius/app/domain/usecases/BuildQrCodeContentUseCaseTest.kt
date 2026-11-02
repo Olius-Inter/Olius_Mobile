@@ -5,7 +5,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class BuildQrCodeContentUseCaseTest {
-
     private val build = BuildQrCodeContentUseCase()
 
     @Test

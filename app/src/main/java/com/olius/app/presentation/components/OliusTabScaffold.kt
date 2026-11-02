@@ -18,20 +18,11 @@ import com.olius.app.presentation.theme.DecorativeBackground
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusTituloMarrom
 
-// Respiro no fim das telas roláveis: o conteúdo passa por baixo do menu
-// inferior de vidro (ver MainScaffoldScreen.kt), então o último item precisa
-// dessa folga pra não ficar escondido atrás dele.
 val BOTTOM_NAV_CONTENT_PADDING = 110.dp
 
-// Distância entre o fim do conteúdo fixo (ex.: campo do chat) e o topo do
-// menu inferior — o menu tem 44dp de ícone + 2x10dp de padding.
 val BOTTOM_NAV_HEIGHT = 76.dp
 
-/**
- * Base das abas pós-login: fundo decorativo amarelo + header (logo, sino,
- * avatar). O [content] decide se rola ou não — o chat, por exemplo, precisa
- * do campo de texto fixo embaixo.
- */
+/** Base das abas pós-login: fundo decorativo amarelo + header (logo, sino, avatar). */
 @Composable
 fun OliusTabScaffold(
     topBarState: OliusTopBarState,
@@ -53,7 +44,7 @@ fun OliusTabScaffold(
     }
 }
 
-/** Título + subtítulo das telas internas (ref_map.png, ref_chat.png). */
+/** Título + subtítulo das telas internas. */
 @Composable
 fun OliusPageTitle(title: String, subtitle: String, modifier: Modifier = Modifier) {
     Column(modifier) {

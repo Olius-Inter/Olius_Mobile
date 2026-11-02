@@ -1,12 +1,7 @@
 package com.olius.app.domain.entity
 
-/**
- * Confere CPF e CNPJ pelos dígitos verificadores. A Core só confere a
- * quantidade de dígitos (11 e 14); o app confere também os dígitos para
- * avisar o erro de digitação antes de enviar.
- */
+/** Confere CPF e CNPJ pelos dígitos verificadores. */
 object BrazilianDocuments {
-
     const val CPF_LENGTH = 11
     const val CNPJ_LENGTH = 14
 
@@ -37,7 +32,6 @@ object BrazilianDocuments {
         return if (rest < 2) 0 else 11 - rest
     }
 
-    // Preenche os "#" com os dígitos; para onde os dígitos acabam.
     private fun mask(digits: String, pattern: String): String {
         val out = StringBuilder()
         var index = 0
