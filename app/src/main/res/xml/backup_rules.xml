@@ -6,6 +6,8 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
+    <!-- Refresh token da Core: cifrado com chave do Keystore, que não vai no backup. -->
+    <exclude domain="sharedpref" path="olius_auth.xml"/>
     <!--
    <include domain="sharedpref" path="."/>
    <exclude domain="sharedpref" path="device.xml"/>
