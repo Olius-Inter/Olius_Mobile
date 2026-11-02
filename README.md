@@ -57,9 +57,11 @@ comentário dizendo o contrato e se ela já existe na Core.
 | Flag | Valor | Efeito |
 |---|---|---|
 | `SOCIAL_LOGIN_ENABLED` | `false` | Esconde os botões Google/Facebook/Microsoft. O fluxo do Google está pronto, esperando `auth/mobile/google` na Core |
+| `PASSWORD_RESET_WITH_CODE` | `false` | Esqueci a senha por link (`auth/password-reset-requests`). `true` usa as telas do código de 6 dígitos |
 
 O app **não tem dado mockado**: todas as telas leem da Core, da API de ranking ou do ViaCEP.
-Quando a Core ainda não tem a rota (ex.: dicas, solicitações do coletor, água/CO₂/biodiesel), aquela parte da tela fica vazia ou zerada.
+Água, CO₂ e biodiesel são calculados no app a partir dos litros (`OilImpact`), e as dicas do cidadão são fixas no app.
+Quando a Core ainda não tem a rota (ex.: registro de óleo, solicitações do coletor, editar perfil, chat), a tela avisa ou aquela parte fica vazia.
 Os mocks (`Mock*Repository`) ficam só em `app/src/test`, para os testes.
 
 ## Telas
@@ -68,9 +70,9 @@ Os mocks (`Mock*Repository`) ficam só em `app/src/test`, para os testes.
 |---|---|---|
 | Splash | `presentation/splash` | Pula o login se já houver sessão |
 | Login, cadastro (cidadão e estabelecimento) | `screen/PerfilType` | Core. Telefone com DDI por país, CPF/CNPJ validados, CEP pelo ViaCEP |
-| Esqueci a senha (código de 6 dígitos) | `screen/PerfilType` | App pronto; a Core ainda não tem `auth/password-resets` |
-| Home (B2B, B2C e coletor) | `screen/home` | Core: nome do perfil, `establishments/me/score`, `collection-requests` e `users/me/points` |
-| Histórico | `screen/history` | B2B: `collections` + `collection-requests` + `score`. B2C: `users/me/points` |
+| Esqueci a senha | `screen/PerfilType` | Link por e-mail (`auth/password-reset-requests`) |
+| Home (B2B, B2C e coletor) | `screen/home` | Core: nome do perfil, `establishments/me/score`, `collection-requests` e `users/me/deliveries`. Saudação pelo horário |
+| Histórico | `screen/history` | B2B: `collections` + `collection-requests` + `score`. B2C: `users/me/deliveries` |
 | Mapa e busca de PEVs | `screen/map` | osmdroid (OpenStreetMap) + GPS. Pontos de `GET /pevs` |
 | Vire Coletor | `screen/becomecollector` | `POST /pevs` + ViaCEP |
 | Ranking e Conquistas | `screen/ranking` | API Redis. Conquistas B2B: `certificate-progress` na Core |
