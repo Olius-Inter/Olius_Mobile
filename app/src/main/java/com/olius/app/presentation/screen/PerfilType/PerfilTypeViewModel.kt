@@ -101,6 +101,13 @@ class PerfilTypeViewModel(
         _uiState.update { it.copy(step = OnboardingStep.LOGIN) }
     }
 
+    /** "← Voltar" do login e do cadastro: volta para a escolha entre cidadão e estabelecimento. */
+    fun backToProfileChoice() {
+        _uiState.update {
+            it.copy(step = OnboardingStep.CHOOSE_PROFILE, authErrorMessage = null, registerFieldErrors = emptyMap())
+        }
+    }
+
     fun goToLogin() {
         _uiState.update {
             it.copy(step = OnboardingStep.LOGIN, authErrorMessage = null, googleAccount = null, registerFieldErrors = emptyMap())

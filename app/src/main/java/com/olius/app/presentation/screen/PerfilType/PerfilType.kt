@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import com.olius.app.domain.entity.PhoneCountry
 import com.olius.app.domain.entity.ProfileType
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
@@ -190,6 +192,7 @@ fun PerfilTypeScreen(
         onForgotPassword = onForgotPassword,
         onGoToRegister = viewModel::goToRegister,
         onGoToLogin = viewModel::goToLogin,
+        onBackToProfileChoice = viewModel::backToProfileChoice,
         accountForm = AccountFormActions(
             onSelectProfileType = viewModel::selectProfileType,
             onDocumentChange = viewModel::updateRegisterDocument,
@@ -231,12 +234,17 @@ private fun PerfilTypeContent(
     onForgotPassword: () -> Unit,
     onGoToRegister: () -> Unit,
     onGoToLogin: () -> Unit,
+    onBackToProfileChoice: () -> Unit,
     accountForm: AccountFormActions
 ) {
     LaunchedEffect(Unit) {
         delay(HEADER_INTRO_DURATION_MS)
         onHeaderIntroFinished()
     }
+
+    // Login e cadastro voltam para a escolha de tipo, pela seta e pelo botão voltar do celular.
+    val canGoBackToProfileChoice = uiState.step == OnboardingStep.LOGIN || uiState.step == OnboardingStep.REGISTER
+    BackHandler(enabled = canGoBackToProfileChoice, onBack = onBackToProfileChoice)
 
     // Carregados aqui, durante a pausa do HEADER_INTRO (nada anima), e não no
     // quadro em que o header vira linha: a logo é decodificada uma vez só (as
@@ -280,8 +288,18 @@ private fun PerfilTypeContent(
                             .imePadding()
                     ) {
                         // Espaço mínimo: com o card de cadastro (alto) o logo
-                        // não cola no topo da tela.
-                        Spacer(Modifier.height(HEADER_MIN_TOP_SPACE))
+                        // não cola no topo da tela. No login e no cadastro, o
+                        // "← Voltar" fica nesse espaço.
+                        Box(Modifier.heightIn(min = HEADER_MIN_TOP_SPACE)) {
+                            // Nome completo: sem ele o Kotlin pega o AnimatedVisibility da Column de fora.
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = canGoBackToProfileChoice,
+                                enter = fadeIn(tween(350)),
+                                exit = fadeOut(tween(200))
+                            ) {
+                                OnboardingBackButton(onClick = onBackToProfileChoice)
+                            }
+                        }
                         // Espaço flexível fica em cima — empurra o grupo
                         // header+card pra baixo, sempre grudado no fundo da
                         // tela (o card não usa mais Alignment.BottomCenter
@@ -361,6 +379,22 @@ private fun PerfilTypeContent(
                 }
             }
         }
+    }
+}
+
+/** "← Voltar" no canto superior esquerdo, igual ao da tela de Esqueci a senha. */
+@Composable
+private fun OnboardingBackButton(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(start = 16.dp, top = 16.dp)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = OliusTextoPrimario, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("Voltar", fontSize = 14.sp, color = OliusTextoPrimario)
     }
 }
 
@@ -1166,6 +1200,7 @@ private fun PerfilTypeScreenPreview() {
         onForgotPassword = {},
         onGoToRegister = {},
         onGoToLogin = {},
+        onBackToProfileChoice = {},
         accountForm = AccountFormActions()
     )
 }

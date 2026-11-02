@@ -118,6 +118,31 @@ class PerfilTypeViewModelTest {
         assertTrue(state.registerFieldErrors.isEmpty())
     }
 
+    @Test
+    fun `voltar do login e do cadastro leva para a escolha de tipo`() {
+        viewModel.onHeaderIntroFinished()
+        viewModel.selectProfileType(ProfileType.CITIZEN)
+        viewModel.confirmProfileType()
+        viewModel.login()
+        assertEquals("Digite seu e-mail", state.authErrorMessage)
+
+        viewModel.backToProfileChoice()
+        assertEquals(OnboardingStep.CHOOSE_PROFILE, state.step)
+        assertEquals(ProfileType.CITIZEN, state.selectedProfileType)
+        assertNull(state.authErrorMessage)
+
+        viewModel.selectProfileType(ProfileType.ESTABLISHMENT)
+        viewModel.confirmProfileType()
+        viewModel.goToRegister()
+        viewModel.register()
+        assertFalse(state.registerFieldErrors.isEmpty())
+
+        viewModel.backToProfileChoice()
+        assertEquals(OnboardingStep.CHOOSE_PROFILE, state.step)
+        assertEquals(ProfileType.ESTABLISHMENT, state.selectedProfileType)
+        assertTrue(state.registerFieldErrors.isEmpty())
+    }
+
     // ---- Campos ---------------------------------------------------------------
 
     @Test
