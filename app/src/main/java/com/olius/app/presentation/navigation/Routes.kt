@@ -5,4 +5,6 @@ sealed class Routes(val route: String) {
     object PerfilType : Routes("perfilType")
     object Main : Routes("main")
     object ForgotPassword : Routes("forgotPassword")
+    object QrCode : Routes("qrCode")
+    object ConnectionError : Routes("error")
 }
