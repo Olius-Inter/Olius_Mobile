@@ -3,26 +3,22 @@ package com.olius.app.data.repository
 import com.olius.app.data.remote.ApiClient
 import com.olius.app.data.remote.ApiConfig
 import com.olius.app.data.remote.ApiException
+import com.olius.app.domain.entity.Achievement
 import com.olius.app.domain.entity.AchievementsSummary
 import com.olius.app.domain.entity.RankingCategory
 import com.olius.app.domain.entity.RankingEntry
 import com.olius.app.domain.entity.RankingPage
+import com.olius.app.domain.entity.SustainabilityLevel
 import com.olius.app.domain.repository.RankingRepository
+import kotlinx.coroutines.CancellationException
 import org.json.JSONObject
 
-/**
- * [RankingRepository] sobre a API Redis (`DB_Segundo/redis-api`):
- * `GET /api/ranking?category=&limit=` → `{year, updatedAt, myPosition, items}`.
- *
- * [client] manda o access token da Core, que a API usa para achar a posição da
- * pessoa. Se a sessão for recusada (401) ou a Core estiver fora (503), tenta de
- * novo com [anonymousClient]: o ranking continua aparecendo, só sem "Sua posição".
- */
+/** [RankingRepository] sobre a API Redis (`DB_Segundo/redis-api`). */
 class HttpRankingRepository(
     private val client: ApiClient,
-    private val anonymousClient: ApiClient = client
+    private val anonymousClient: ApiClient = client,
+    private val coreClient: ApiClient? = null
 ) : RankingRepository {
-
     override suspend fun getRanking(category: RankingCategory): Result<RankingPage> =
         runCatching {
             val query = mapOf("category" to category.apiValue, "limit" to ApiConfig.RANKING_LIMIT.toString())
@@ -35,12 +31,43 @@ class HttpRankingRepository(
             parseRankingPage(JSONObject(body))
         }
 
-    /** A API Redis não serve conquistas; elas vão ficar no Room. Sem chamada de rede até lá. */
-    override suspend fun getAchievements(category: RankingCategory): Result<AchievementsSummary> =
-        Result.failure(UnsupportedOperationException("Conquistas ainda não estão disponíveis no app"))
+    override suspend fun getAchievements(category: RankingCategory): Result<AchievementsSummary> {
+        val core = coreClient
+        if (core == null || category != RankingCategory.ESTABLISHMENT) {
+            return Result.failure(UnsupportedOperationException("Conquistas ainda não estão disponíveis no app"))
+        }
+        return runCatching {
+            parseCertificateProgress(JSONObject(core.get(ApiConfig.Main.CERTIFICATE_PROGRESS)))
+        }
+    }
 
-    private companion object {
-        val SESSION_FALLBACK_CODES = setOf(401, 503)
+    companion object {
+        private val SESSION_FALLBACK_CODES = setOf(401, 503)
+
+        /** Ranking ligado à sessão da Core. */
+        fun withCoreSession(
+            baseUrl: String,
+            tokenProvider: suspend () -> String?,
+            onUnauthorized: suspend (rejectedToken: String) -> String?,
+            coreClient: ApiClient? = null
+        ): HttpRankingRepository = HttpRankingRepository(
+            client = ApiClient(
+                baseUrl = baseUrl,
+                tokenProvider = { orNull { tokenProvider() } },
+                onUnauthorized = { rejected -> orNull { onUnauthorized(rejected) } }
+            ),
+            anonymousClient = ApiClient(baseUrl),
+            coreClient = coreClient
+        )
+
+        private suspend fun orNull(block: suspend () -> String?): String? =
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
     }
 }
 
@@ -65,4 +92,36 @@ internal fun parseRankingPage(json: JSONObject): RankingPage {
         myPoints = mine?.getLong("points"),
         updatedAt = json.optStringOrNull("updatedAt")
     )
+}
+
+/** Converte o `CertificateProgress` da Core (CertificateContracts.Progress). */
+internal fun parseCertificateProgress(json: JSONObject): AchievementsSummary {
+    val total = json.optDouble("eligibleVolumeLiters", 0.0)
+    val levels = json.optJSONArray("levels").mapObjects {
+        Achievement(
+            id = it.getString("levelId"),
+            title = it.getString("name"),
+            description = it.optStringOrNull("description"),
+            badgeImageUrl = null,
+            requiredLiters = it.getDouble("requiredLiters"),
+            unlocked = it.optBoolean("reached"),
+            unlockedAt = null,
+            rarity = null
+        )
+    }.sortedBy { it.requiredLiters }
+    val reached = levels.count { it.unlocked }
+    val current = levels.getOrNull(reached - 1)
+    val next = levels.getOrNull(reached)
+    val base = current?.requiredLiters ?: 0.0
+    val level = SustainabilityLevel(
+        level = reached,
+        name = current?.title,
+        totalLiters = total,
+        targetLiters = next?.requiredLiters ?: levels.lastOrNull()?.requiredLiters,
+        progress = next?.let { ((total - base) / (it.requiredLiters - base)).toFloat().coerceIn(0f, 1f) }
+            ?: if (levels.isEmpty()) 0f else 1f,
+        isMax = levels.isNotEmpty() && next == null,
+        configured = levels.isNotEmpty()
+    )
+    return AchievementsSummary(level, levels)
 }

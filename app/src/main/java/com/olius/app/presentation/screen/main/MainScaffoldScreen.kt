@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,19 +50,32 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.olius.app.R
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olius.app.presentation.components.OliusTopBarState
+import com.olius.app.data.remote.AppContainer
+import com.olius.app.domain.entity.ProfileType
+import com.olius.app.presentation.screen.becomecollector.BecomeCollectorScreen
+import com.olius.app.presentation.screen.chat.ChatScreen
+import com.olius.app.presentation.screen.history.HistoryScreen
+import com.olius.app.presentation.screen.home.HomeOverlaySheets
 import com.olius.app.presentation.screen.home.HomeScreen
+import com.olius.app.presentation.screen.home.HomeViewModel
+import com.olius.app.presentation.screen.map.MapScreen
+import com.olius.app.presentation.screen.profile.EditProfileScreen
+import com.olius.app.presentation.screen.profile.PrivacyPolicyScreen
+import com.olius.app.presentation.screen.profile.ProfileScreen
 import com.olius.app.presentation.screen.ranking.RankingScreen
 import com.olius.app.presentation.theme.OliusNavBarFundo
 import com.olius.app.presentation.theme.OliusTextoSecundario
 
-/** As 5 abas do menu inferior fixo (ver ref_home_cell_1.png/ref_home_cell_2.png). */
+/** As 5 abas do menu inferior fixo. */
 enum class BottomNavTab(val route: String, val label: String) {
     HOME("home_tab", "Home"),
     HISTORY("history_tab", "Histórico"),
+    MAP("map_tab", "Mapa"),
     RANKING("ranking_tab", "Ranking"),
-    CHAT("chat_tab", "Chat"),
-    PIGGY_BANK("piggy_tab", "Cofrinho")
+    OLIVIA("olivia_tab", "OlivIA")
 }
 
 private data class NavTabIcons(val regular: Int, val selected: Int)
@@ -69,37 +83,56 @@ private data class NavTabIcons(val regular: Int, val selected: Int)
 private val tabIcons = mapOf(
     BottomNavTab.HOME to NavTabIcons(R.drawable.home, R.drawable.home_selected),
     BottomNavTab.HISTORY to NavTabIcons(R.drawable.history, R.drawable.history_selected),
+    BottomNavTab.MAP to NavTabIcons(R.drawable.map_b2c, R.drawable.map_selected_b2c),
     BottomNavTab.RANKING to NavTabIcons(R.drawable.ranking, R.drawable.ranking_selected),
-    BottomNavTab.CHAT to NavTabIcons(R.drawable.chat, R.drawable.chat_selected),
-    BottomNavTab.PIGGY_BANK to NavTabIcons(R.drawable.pig, R.drawable.pig_selected)
+    BottomNavTab.OLIVIA to NavTabIcons(R.drawable.chat_olius, R.drawable.chat_olius_selected)
 )
 
-// Raio do blur do vidro do menu inferior — só tem efeito em API 31+ (ver
-// comentário em OliusBottomNavBar). Aumente pra um vidro mais "fosco".
 private const val NAV_BAR_GLASS_BLUR_RADIUS = 28f
 
-/**
- * Casca do app pós-login: menu inferior fixo (nunca sai da tela, mesmo com
- * popups/bottom sheets abertos por cima do conteúdo — ver HOME_SCREEN.md)
- * + um NavHost próprio pra trocar de aba sem perder o menu. Home e Ranking
- * têm tela de verdade; as outras 3 são placeholders "Em breve"
- * (ver [PlaceholderTabScreen]) até existirem.
- *
- * Não usa mais `Scaffold` de propósito: pro efeito de vidro do menu inferior
- * funcionar, o conteúdo precisa continuar sendo desenhado POR BAIXO do menu
- * (não empurrado pra cima por um padding), pra ter algo de verdade pra
- * "borrar" atrás do vidro — ver [OliusBottomNavBar].
- */
+/** Casca do app pós-login: menu inferior fixo + um NavHost próprio pra trocar de aba sem perder o menu. */
+/** Tela fora do menu inferior, mas dentro do scaffold (o menu continua com "Mapa" ativo). */
+private const val BECOME_COLLECTOR_ROUTE = "become_collector"
+
+/** Perfil, "Editar Perfil" e "Política de Privacidade". */
+private const val PROFILE_ROUTE = "profile"
+private const val EDIT_PROFILE_ROUTE = "profile_edit"
+private const val PRIVACY_POLICY_ROUTE = "profile_privacy"
+private val PROFILE_ROUTES = setOf(PROFILE_ROUTE, EDIT_PROFILE_ROUTE, PRIVACY_POLICY_ROUTE)
+
 @Composable
-fun MainScaffoldScreen(onLogout: () -> Unit) {
+fun MainScaffoldScreen(
+    onLogout: () -> Unit,
+    onOpenQrCode: () -> Unit = {},
+    onConnectionError: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // Camada onde o conteúdo de trás (a tela ativa) é "gravado" a cada frame,
-    // só pra ser redesenhada (borrada) por baixo do menu inferior — ver
-    // OliusBottomNavBar. O conteúdo em si continua sendo desenhado
-    // normalmente também (drawContent() roda nos dois lugares).
+    val homeViewModel: HomeViewModel = viewModel()
+    val homeState by homeViewModel.uiState.collectAsState()
+
+    var profileOriginRoute by rememberSaveable { mutableStateOf<String?>(null) }
+    val tabRouteOf: (String?) -> String? = { route ->
+        if (route == BECOME_COLLECTOR_ROUTE) BottomNavTab.MAP.route else route
+    }
+
+    val topBarState = OliusTopBarState(
+        hasUnreadNotifications = homeState.hasUnreadNotifications,
+        onNotificationsClick = homeViewModel::onNotificationsClick,
+        onProfileClick = {
+            if (currentRoute !in PROFILE_ROUTES) {
+                profileOriginRoute = tabRouteOf(currentRoute)
+                navController.navigate(PROFILE_ROUTE) { launchSingleTop = true }
+            }
+        }
+    )
+
+    LaunchedEffect(homeState.isOffline) {
+        if (homeState.isOffline) onConnectionError()
+    }
+
     val contentLayer = rememberGraphicsLayer()
 
     Box(Modifier.fillMaxSize()) {
@@ -113,18 +146,51 @@ fun MainScaffoldScreen(onLogout: () -> Unit) {
                     drawContent()
                 }
         ) {
-            composable(BottomNavTab.HOME.route) { HomeScreen(onLogout = onLogout) }
-            composable(BottomNavTab.HISTORY.route) { PlaceholderTabScreen(title = "Histórico") }
-            composable(BottomNavTab.RANKING.route) { RankingScreen(topBarState = OliusTopBarState()) }
-            composable(BottomNavTab.CHAT.route) { PlaceholderTabScreen(title = "Chat") }
-            composable(BottomNavTab.PIGGY_BANK.route) { PlaceholderTabScreen(title = "Cofrinho") }
+            composable(BottomNavTab.HOME.route) {
+                HomeScreen(topBarState = topBarState, viewModel = homeViewModel, onOpenQrCode = onOpenQrCode)
+            }
+            composable(BottomNavTab.HISTORY.route) {
+                HistoryScreen(topBarState = topBarState, onConnectionError = onConnectionError)
+            }
+            composable(BottomNavTab.MAP.route) {
+                MapScreen(
+                    topBarState = topBarState,
+                    isCollector = homeState.isCollector || AppContainer.isCollector(),
+                    isEstablishment = AppContainer.currentProfileType() == ProfileType.ESTABLISHMENT,
+                    onBecomeCollector = { navController.navigate(BECOME_COLLECTOR_ROUTE) }
+                )
+            }
+            composable(BECOME_COLLECTOR_ROUTE) {
+                BecomeCollectorScreen(topBarState = topBarState, onDone = { navController.popBackStack() })
+            }
+            composable(BottomNavTab.RANKING.route) { RankingScreen(topBarState = topBarState) }
+            composable(BottomNavTab.OLIVIA.route) { ChatScreen(topBarState = topBarState) }
+            composable(PROFILE_ROUTE) {
+                ProfileScreen(
+                    onBack = { navController.popBackStack() },
+                    onEditProfile = { navController.navigate(EDIT_PROFILE_ROUTE) { launchSingleTop = true } },
+                    onPrivacyPolicy = { navController.navigate(PRIVACY_POLICY_ROUTE) { launchSingleTop = true } },
+                    onLogout = onLogout
+                )
+            }
+            composable(PRIVACY_POLICY_ROUTE) {
+                PrivacyPolicyScreen(onBack = { navController.popBackStack() })
+            }
+            composable(EDIT_PROFILE_ROUTE) {
+                EditProfileScreen(
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    onConnectionError = onConnectionError
+                )
+            }
         }
 
         OliusBottomNavBar(
             contentLayer = contentLayer,
-            currentRoute = currentRoute,
+            currentRoute = if (currentRoute in PROFILE_ROUTES) profileOriginRoute else tabRouteOf(currentRoute),
             onTabSelected = { tab ->
-                if (tab.route != currentRoute) {
+                if (currentRoute in PROFILE_ROUTES) navController.popBackStack(PROFILE_ROUTE, inclusive = true)
+                if (tab.route != navController.currentDestination?.route) {
                     navController.navigate(tab.route) {
                         popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                         launchSingleTop = true
@@ -135,20 +201,12 @@ fun MainScaffoldScreen(onLogout: () -> Unit) {
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
+
+    HomeOverlaySheets(viewModel = homeViewModel)
+
 }
 
-/**
- * Menu inferior fixo com efeito de vidro (glassmorphism): em vez de um fundo
- * cinza sólido, redesenha por baixo de si mesmo — borrado e com uma leve
- * tonalidade escura por cima — o que já está atrás dele na [contentLayer]
- * (a tela ativa, capturada em `MainScaffoldScreen`). O borrão de verdade
- * (`RenderEffect`/`BlurEffect`) só existe a partir do Android 12 (API 31);
- * abaixo disso cai pra um fundo escuro translúcido só (sem borrão), do
- * mesmo jeito que `blurCompat` faz em DecorativeBackground.kt.
- *
- * A troca de cor animada dos ícones continua sendo um crossfade entre o
- * ícone normal e o "_selected" (os PNGs já vêm coloridos).
- */
+/** Menu inferior fixo com efeito de vidro (glassmorphism). */
 @Composable
 private fun OliusBottomNavBar(
     contentLayer: GraphicsLayer,
@@ -232,14 +290,3 @@ private fun BottomNavItem(tab: BottomNavTab, selected: Boolean, onClick: () -> U
     }
 }
 
-/**
- * Placeholder pras 3 abas que ainda não têm tela real (Histórico, Chat,
- * Cofrinho) — só pra deixar a navegação/menu inferior funcionando de
- * ponta a ponta. Substitua pela tela de verdade quando ela existir.
- */
-@Composable
-private fun PlaceholderTabScreen(title: String) {
-    Box(Modifier.fillMaxSize().background(Color.White), contentAlignment = Alignment.Center) {
-        Text("$title em breve", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OliusTextoSecundario)
-    }
-}

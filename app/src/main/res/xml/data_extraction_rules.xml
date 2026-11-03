@@ -5,15 +5,10 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Refresh token da Core: cifrado com chave do Keystore, que não vai no backup. -->
+        <exclude domain="sharedpref" path="olius_auth.xml"/>
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="olius_auth.xml"/>
     </device-transfer>
-    -->
 </data-extraction-rules>

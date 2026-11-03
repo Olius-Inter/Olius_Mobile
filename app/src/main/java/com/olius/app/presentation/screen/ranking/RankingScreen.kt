@@ -53,6 +53,7 @@ import com.olius.app.presentation.components.OliusSegmentedControl
 import com.olius.app.presentation.components.OliusTabScaffold
 import com.olius.app.presentation.components.OliusTopBarState
 import com.olius.app.presentation.theme.OliusAmarelo
+import com.olius.app.presentation.theme.OliusTituloMarromClaro
 import com.olius.app.presentation.theme.OliusAmareloClaro
 import com.olius.app.presentation.theme.OliusAvatarPrataFundo
 import com.olius.app.presentation.theme.OliusAvatarPrataTexto
@@ -63,6 +64,7 @@ import com.olius.app.presentation.theme.OliusPrata
 import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusTituloMarrom
+import com.olius.app.presentation.theme.OliusSuperficie
 import java.util.Locale
 
 /** Cores de cada lugar do pódio: borda do card, fundo e texto do avatar. */
@@ -74,11 +76,7 @@ private fun podiumStyle(position: Int): PodiumStyle = when (position) {
     else -> PodiumStyle(R.drawable.podio_3, OliusBronze, OliusBronze, Color.White)
 }
 
-/**
- * Ranking de Recicladores (ref_ranking.png / ref_ranking_2.png / ref_ranking_b2b.png):
- * banner com a posição da pessoa, seletor de categoria (ranking anual por pontos), abas
- * Competições/Conquistas, pódio e a lista completa.
- */
+/** Ranking de Recicladores: banner com a posição da pessoa. */
 @Composable
 fun RankingScreen(topBarState: OliusTopBarState, viewModel: RankingViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -130,10 +128,6 @@ fun RankingScreen(topBarState: OliusTopBarState, viewModel: RankingViewModel = v
     }
 }
 
-// ---------------------------------------------------------------------------
-// Banner "Ranking de Recicladores"
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun RankingBanner(currentUser: RankingEntry?) {
     Box(
@@ -152,9 +146,9 @@ private fun RankingBanner(currentUser: RankingEntry?) {
                 .size(150.dp)
         )
         Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
-            Text("Ranking de Recicladores", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarrom)
+            Text("Ranking de Recicladores", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarromClaro)
             Spacer(Modifier.height(4.dp))
-            Text("Veja quem está fazendo mais pelo planeta este ano.", fontSize = 12.sp, color = OliusTituloMarrom)
+            Text("Veja quem está fazendo mais pelo planeta este ano.", fontSize = 12.sp, color = OliusTituloMarromClaro)
             Spacer(Modifier.height(20.dp))
             Row(
                 modifier = Modifier
@@ -170,16 +164,12 @@ private fun RankingBanner(currentUser: RankingEntry?) {
                         ?: "Você ainda não pontuou neste ranking",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = OliusTituloMarrom
+                    color = OliusTituloMarromClaro
                 )
             }
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Abas Competições / Conquistas
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun RankingTabs(selected: RankingTab, onSelect: (RankingTab) -> Unit) {
@@ -321,13 +311,8 @@ private fun AchievementsContent(state: RankingUiState, onRetry: () -> Unit) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Pódio (2º, 1º, 3º)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun Podium(entries: List<RankingEntry>) {
-    // Ordem visual do pódio: 2º à esquerda, 1º no meio (mais alto), 3º à direita.
     val ordered = listOfNotNull(entries.getOrNull(1), entries.getOrNull(0), entries.getOrNull(2))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -350,7 +335,7 @@ private fun PodiumCard(entry: RankingEntry, modifier: Modifier = Modifier) {
                 .padding(top = 8.dp)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = Color.White,
+            color = OliusSuperficie,
             border = BorderStroke(if (isFirst) 2.dp else 1.5.dp, style.border),
             shadowElevation = if (isFirst) 8.dp else 0.dp
         ) {
@@ -380,7 +365,7 @@ private fun PodiumCard(entry: RankingEntry, modifier: Modifier = Modifier) {
                 "Você",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = OliusTituloMarrom,
+                color = OliusTituloMarromClaro,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(OliusAmarelo)
@@ -404,16 +389,12 @@ private fun InitialsAvatar(initials: String, style: PodiumStyle, size: Dp) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Lista completa
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun RankingList(entries: List<RankingEntry>) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = Color.White,
+        color = OliusSuperficie,
         border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
         Column {

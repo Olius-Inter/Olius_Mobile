@@ -6,19 +6,11 @@ import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.olius.app.R
+import com.olius.app.domain.entity.GoogleAccount
 import java.util.UUID
 
-/**
- * Pede ao Credential Manager um ID token do Google pra conta escolhida no
- * dispositivo. Fica na camada de apresentação (não no ViewModel/domínio)
- * porque `CredentialManager.getCredential` precisa de um Context de Activity
- * — ver AUTH_02_LOGIN_GOOGLE.md, seção 6, pro porquê dessa fronteira.
- *
- * `R.string.default_web_client_id` é gerado automaticamente pelo plugin
- * `google-services` a partir do `google-services.json` (client_type 3) —
- * ver AUTH_02, seção 3.
- */
-suspend fun requestGoogleIdToken(context: Context): String {
+/** Pede ao Credential Manager um ID token do Google pra conta escolhida no dispositivo. */
+suspend fun requestGoogleAccount(context: Context): GoogleAccount {
     val nonce = UUID.randomUUID().toString()
 
     val googleIdOption = GetGoogleIdOption.Builder()
@@ -35,6 +27,6 @@ suspend fun requestGoogleIdToken(context: Context): String {
     val credentialManager = CredentialManager.create(context)
     val result = credentialManager.getCredential(context, request)
 
-    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
-    return googleIdTokenCredential.idToken
+    val credential = GoogleIdTokenCredential.createFrom(result.credential.data)
+    return GoogleAccount(idToken = credential.idToken, email = credential.id, name = credential.displayName)
 }

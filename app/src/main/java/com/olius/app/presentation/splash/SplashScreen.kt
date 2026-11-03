@@ -19,13 +19,9 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.rememberLottieAnimatable
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.olius.app.R
+import com.olius.app.presentation.theme.OliusFundoTela
 
-/**
- * Dono do [SplashViewModel]: toca a animação e, quando ela termina, reage ao
- * [SplashUiState] pra decidir a navegação real — só chega em [onNavigateHome]
- * quem já tem sessão válida do Firebase; o resto vai pro fluxo de login. Ver
- * AUTH_01_LOGIN_EMAIL_SENHA.md, seção 9.
- */
+/** Dono do [SplashViewModel]: toca a animação e. */
 @Composable
 fun SplashRoute(
     onNavigateHome: () -> Unit,
@@ -45,20 +41,9 @@ fun SplashRoute(
     MainScreen(onFinished = viewModel::onSplashAnimationFinished)
 }
 
-// Zoom extra sobre a animação (além do Crop). Ajuste aqui se quiser a
-// logo/"Olius" ainda maior ou menor — 1f = tamanho original do Crop.
 private const val SPLASH_ZOOM = 1.2f
 
-/**
- * Toca a animação da splash uma única vez e chama [onFinished] exatamente
- * quando ela termina — é esse instante que o PerfilTypeScreen replica
- * (logo + "Olius" centralizados) pra continuar o fluxo sem corte visual.
- *
- * O fundo branco explícito aqui é proposital: o .json da splash não tem
- * nenhuma camada de fundo (é transparente fora dos desenhos), então sem
- * isso a tela mostraria a cor de fundo do tema por trás (que pode ficar
- * escura/preta com dynamic color em modo escuro).
- */
+/** Toca a animação da splash uma única vez e chama [onFinished] exatamente quando ela termina. */
 @Composable
 fun MainScreen(onFinished: () -> Unit) {
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.splashscreen))
@@ -73,7 +58,7 @@ fun MainScreen(onFinished: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(OliusFundoTela),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

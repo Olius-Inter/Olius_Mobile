@@ -10,7 +10,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SharedPrefsCollectorPromptStoreTest {
-
     private val editor = mockk<SharedPreferences.Editor>(relaxed = true)
     private val prefs = mockk<SharedPreferences> {
         every { edit() } returns editor

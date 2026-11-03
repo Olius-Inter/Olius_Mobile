@@ -1,25 +1,27 @@
 package com.olius.app.domain.repository
 
-/**
- * Contrato de autenticação do domínio — não conhece Firebase nem nenhum
- * outro SDK, só descreve as operações que o app precisa. Quem implementa de
- * verdade (hoje, com FirebaseAuth) é [com.olius.app.data.repository.UserRepositoryImpl].
- * Ver AUTH_03_ARQUITETURA_USECASES.md pro porquê dessa camada existir.
- */
-interface UserRepository {
+import com.olius.app.domain.entity.AccountRegistration
+import com.olius.app.domain.entity.EstablishmentType
 
-    /** Login com e-mail/senha. `Result.failure` carrega a exceção original do provedor. */
+/** Contrato de autenticação do domínio. */
+interface UserRepository {
+    /** Login com e-mail/senha (POST /auth/mobile/login). */
     suspend fun signInWithEmail(email: String, password: String): Result<Unit>
 
-    /** Cadastro com e-mail/senha. */
-    suspend fun registerWithEmail(email: String, password: String): Result<Unit>
+    /** Cadastro com senha na Core e, aceito, login automático com a mesma senha. */
+    suspend fun register(registration: AccountRegistration, password: String): Result<Unit>
 
-    /** Troca um ID token do Google (Credential Manager) por uma sessão autenticada. */
+    /** Login com o ID token do Google (Credential Manager). */
     suspend fun signInWithGoogleIdToken(idToken: String): Result<Unit>
 
-    /** Encerra a sessão atual. Síncrono — o provedor não precisa de chamada de rede pra isso. */
+    /** "Completar cadastro" do Google: mesmos dados do cadastro, sem senha. */
+    suspend fun completeGoogleRegistration(idToken: String, registration: AccountRegistration): Result<Unit>
+
+    /** Tipos de estabelecimento para o cadastro (rota pública). */
+    suspend fun establishmentTypes(): Result<List<EstablishmentType>>
+
     fun signOut()
 
-    /** true se já existe uma sessão válida (usado pela Splash pra decidir a rota inicial). */
+    /** true se há uma sessão salva e ainda válida (usado pela Splash pra decidir a rota inicial). */
     fun isUserLoggedIn(): Boolean
 }

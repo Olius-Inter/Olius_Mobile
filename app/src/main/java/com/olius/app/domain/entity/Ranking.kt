@@ -1,15 +1,12 @@
 package com.olius.app.domain.entity
 
-/** Toggle "Estabelecimento | Cidadão". [apiValue] = parâmetro `category` da API de ranking. */
+/** Toggle "Estabelecimento | Cidadão". */
 enum class RankingCategory(val label: String, val apiValue: String) {
     ESTABLISHMENT("Estabelecimento", "establishment"),
     CITIZEN("Cidadão", "citizen")
 }
 
-/**
- * Uma linha do ranking anual. [position] é densa: empatados dividem a posição
- * (1, 1, 2). [points] é a pontuação do ano, não litros.
- */
+/** Uma linha do ranking anual. */
 data class RankingEntry(
     val position: Int,
     val name: String,
@@ -19,12 +16,7 @@ data class RankingEntry(
     /** Iniciais que a API já manda (`iniciais`); null = calcula pelo nome. */
     private val serverInitials: String? = null
 ) {
-    /**
-     * Iniciais do avatar (ref_ranking.png): primeira letra da primeira e da
-     * última palavra ("Dogão do Adriano" -> "DA"). Nome de uma palavra só usa
-     * a próxima maiúscula ("ToKonFome" -> "TK") ou a primeira consoante
-     * ("Reuters" -> "RT").
-     */
+    /** Iniciais do avatar: primeira letra da primeira e da última palavra ("Dogão do Adriano" -> "DA"). */
     val initials: String
         get() {
             if (!serverInitials.isNullOrBlank()) return serverInitials
@@ -43,11 +35,7 @@ data class RankingEntry(
     }
 }
 
-/**
- * Uma página do ranking (RankingResponse): top N do [year] + a posição da
- * pessoa, mesmo fora do top. [updatedAt] é o último rebuild (ISO-8601): o
- * ranking não é instantâneo.
- */
+/** Uma página do ranking (RankingResponse): top N do [year] + a posição da pessoa, mesmo fora do top. */
 data class RankingPage(
     val year: Int,
     val entries: List<RankingEntry>,

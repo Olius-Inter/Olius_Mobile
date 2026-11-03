@@ -4,7 +4,14 @@ import com.olius.app.MainDispatcherRule
 import com.olius.app.data.repository.MockOlivIARepository
 import com.olius.app.domain.entity.AttachmentKind
 import com.olius.app.domain.entity.ChatAttachment
+import com.olius.app.domain.entity.OlivIAException
+import com.olius.app.domain.entity.OlivIAReplyChunk
+import com.olius.app.domain.repository.OlivIARepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -17,7 +24,6 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -38,6 +44,24 @@ class ChatViewModelTest {
         viewModel.onSend()
 
         assertTrue(state.messages.isEmpty())
+    }
+
+    @Test
+    fun `botao enviar so fica ativo com texto e nao durante a resposta`() = runTest {
+        viewModel.onInputChange("")
+        assertFalse(state.canSend)
+        viewModel.onInputChange("  \n ")
+        assertFalse(state.canSend)
+        viewModel.onInputChange("Oi")
+        assertTrue(state.canSend)
+
+        viewModel.onSend()
+        assertTrue(state.isGenerating)
+        viewModel.onInputChange("Outra pergunta")
+        assertFalse(state.canSend)
+
+        advanceUntilIdle()
+        assertTrue(state.canSend)
     }
 
     @Test
@@ -153,5 +177,124 @@ class ChatViewModelTest {
         assertEquals(listOf(ChatMessagePart.File(file)), question.parts)
         assertTrue(answer.text().contains("notas.pdf"))
         assertNull(state.pendingAttachment)
+    }
+
+    /** Repositório falso que guarda o conversationId recebido em cada chamada. */
+    private class FakeCoreRepository(private val answer: suspend (call: Int) -> List<OlivIAReplyChunk>) : OlivIARepository {
+        val conversationIds = mutableListOf<String?>()
+        override fun reply(message: String, attachment: ChatAttachment?, conversationId: String?) = flow {
+            conversationIds += conversationId
+            answer(conversationIds.size).forEach { emit(it) }
+        }
+    }
+
+    @Test
+    fun `sucesso mostra a resposta e reenvia o conversationId na proxima mensagem`() = runTest {
+        val repository = FakeCoreRepository { call ->
+            listOf(OlivIAReplyChunk.Conversation("c-1"), OlivIAReplyChunk.Text("Resposta $call"))
+        }
+        val viewModel = ChatViewModel(repository)
+
+        viewModel.onSuggestionClick("Oi")
+        advanceUntilIdle()
+        viewModel.onSuggestionClick("Tudo bem?")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(null, "c-1"), repository.conversationIds)
+        assertEquals("c-1", state.conversationId)
+        assertEquals("Resposta 2", state.messages.last().text())
+        assertFalse(state.isGenerating)
+    }
+
+    @Test
+    fun `rota inexistente vira mensagem na conversa`() = runTest {
+        val viewModel = ChatViewModel { _, _, _ -> flow<OlivIAReplyChunk> { throw OlivIAException.NotAvailable() } }
+
+        viewModel.onSuggestionClick("Oi")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("O assistente ainda não está disponível no servidor.", state.messages.last().text())
+        assertEquals(ChatAuthor.OLIVIA, state.messages.last().author)
+        assertFalse(state.isGenerating)
+    }
+
+    @Test
+    fun `503, timeout e sem rede viram mensagens na conversa`() = runTest {
+        val errors = ArrayDeque(listOf(OlivIAException.Unavailable(), OlivIAException.Timeout(), OlivIAException.Offline()))
+        val viewModel = ChatViewModel { _, _, _ ->
+            flow<OlivIAReplyChunk> {
+                delay(1_000)
+                throw errors.removeFirst()
+            }
+        }
+        val expected = listOf(
+            "O assistente está indisponível, tente de novo.",
+            "A OlivIA demorou demais para responder. Tente de novo.",
+            "Sem conexão com o servidor. Confira sua internet e tente de novo."
+        )
+
+        expected.forEach { text ->
+            viewModel.onSuggestionClick("Oi")
+            advanceUntilIdle()
+            assertEquals(text, viewModel.uiState.value.messages.last().text())
+        }
+        assertEquals(6, viewModel.uiState.value.messages.size)
+    }
+
+    @Test
+    fun `erro inesperado vira mensagem generica sem derrubar o app`() = runTest {
+        val viewModel = ChatViewModel { _, _, _ -> flow<OlivIAReplyChunk> { throw IllegalStateException("json estranho") } }
+
+        viewModel.onSuggestionClick("Oi")
+        advanceUntilIdle()
+
+        assertEquals("Não consegui responder agora. Tente de novo.", viewModel.uiState.value.messages.last().text())
+    }
+
+    @Test
+    fun `parar cancela a chamada e mostra resposta interrompida`() = runTest {
+        var cancelled = false
+        val viewModel = ChatViewModel { _, _, _ ->
+            flow<OlivIAReplyChunk> {
+                try {
+                    awaitCancellation()
+                } finally {
+                    cancelled = true
+                }
+            }
+        }
+
+        viewModel.onSuggestionClick("Oi")
+        advanceTimeBy(5_000)
+        assertTrue(viewModel.uiState.value.isGenerating)
+
+        viewModel.onStopGenerating()
+        advanceUntilIdle()
+
+        assertTrue(cancelled)
+        assertEquals(INTERRUPTED_REPLY_TEXT, viewModel.uiState.value.messages.last().text())
+        assertFalse(viewModel.uiState.value.isGenerating)
+    }
+
+    @Test
+    fun `parar quando a conexao fechada vira erro de rede ainda mostra interrompida`() = runTest {
+        val viewModel = ChatViewModel { _, _, _ ->
+            flow<OlivIAReplyChunk> {
+                try {
+                    delay(60_000)
+                } catch (e: CancellationException) {
+                    throw OlivIAException.Offline(e)
+                }
+            }
+        }
+
+        viewModel.onSuggestionClick("Oi")
+        advanceTimeBy(1_000)
+        viewModel.onStopGenerating()
+        advanceUntilIdle()
+
+        assertEquals(INTERRUPTED_REPLY_TEXT, viewModel.uiState.value.messages.last().text())
     }
 }

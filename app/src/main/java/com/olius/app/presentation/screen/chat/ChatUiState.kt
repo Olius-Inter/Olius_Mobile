@@ -26,7 +26,6 @@ data class ChatMessage(
             if (last is ChatMessagePart.Text) {
                 copy(parts = parts.dropLast(1) + last.copy(text = last.text + chunk.text))
             } else {
-                // Texto novo depois de um arquivo começa num parágrafo próprio.
                 copy(parts = parts + ChatMessagePart.Text(chunk.text.trimStart()))
             }
         }
@@ -35,6 +34,8 @@ data class ChatMessage(
 
         is OlivIAReplyChunk.Attachment ->
             copy(parts = parts.filterNot { it == ChatMessagePart.GeneratingFile } + ChatMessagePart.File(chunk.attachment))
+
+        is OlivIAReplyChunk.Conversation -> this
     }
 }
 
@@ -43,7 +44,9 @@ data class ChatUiState(
     val input: String = "",
     val pendingAttachment: ChatAttachment? = null,
     val isGenerating: Boolean = false,
-    val isAttachmentMenuOpen: Boolean = false
+    val isAttachmentMenuOpen: Boolean = false,
+    /** Id da conversa no servidor (vem na 1ª resposta e é reenviado nas próximas). */
+    val conversationId: String? = null
 ) {
     val canSend: Boolean
         get() = !isGenerating && (input.isNotBlank() || pendingAttachment != null)

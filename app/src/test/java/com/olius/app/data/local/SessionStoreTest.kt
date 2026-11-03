@@ -1,44 +1,31 @@
 package com.olius.app.data.local
 
-import android.content.Context
-import android.content.SharedPreferences
+import com.olius.app.data.local.db.UserProfileDao
+import com.olius.app.data.local.db.UserProfileEntity
 import com.olius.app.domain.entity.ProfileType
 import com.olius.app.domain.entity.UserProfile
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SessionStoreTest {
-
     private val profile = UserProfile(
         id = "u-1",
         name = "Ana Lima",
         email = "ana@olius.app",
         profileType = ProfileType.CITIZEN,
-        pendingSync = true,
-        phone = "11999990000",
-        birthDate = "2000-01-31",
+        phone = "5511999990000",
         isCollector = true,
         qrToken = "qr-1"
     )
 
-    private val values = mutableMapOf<String, Any?>()
-    private val editor = mockk<SharedPreferences.Editor>(relaxed = true) {
-        every { putString(any(), any()) } answers { values[firstArg()] = secondArg<String?>(); self as SharedPreferences.Editor }
-        every { putBoolean(any(), any()) } answers { values[firstArg()] = secondArg<Boolean>(); self as SharedPreferences.Editor }
-        every { clear() } answers { values.clear(); self as SharedPreferences.Editor }
-    }
-    private val prefs = mockk<SharedPreferences> {
-        every { edit() } returns editor
-        every { getString(any(), any()) } answers { values[firstArg()] as String? ?: secondArg() }
-        every { getBoolean(any(), any()) } answers { values[firstArg()] as Boolean? ?: secondArg() }
-    }
-    private val context = mockk<Context> {
-        every { applicationContext } returns this
-        every { getSharedPreferences(any(), Context.MODE_PRIVATE) } returns prefs
+    /** DAO em memória: a tabela `user_profile` com uma linha só. */
+    private class FakeDao : UserProfileDao {
+        var row: UserProfileEntity? = null
+        var loads = 0
+        override fun load(): UserProfileEntity? { loads++; return row }
+        override fun clear() { row = null }
+        override fun upsert(profile: UserProfileEntity) { row = profile }
     }
 
     @Test
@@ -54,32 +41,35 @@ class SessionStoreTest {
     }
 
     @Test
-    fun `shared preferences salva e carrega todos os campos`() {
-        val store = SharedPrefsSessionStore(context)
+    fun `room salva e carrega todos os campos e so le o disco uma vez`() {
+        val dao = FakeDao()
+        val store = RoomSessionStore(dao)
         assertNull(store.load())
 
         store.save(profile)
 
+        assertEquals(UserProfileEntity.from(profile), dao.row)
         assertEquals(profile, store.load())
-        verify { editor.apply() }
+        assertEquals(profile, RoomSessionStore(dao).load())
+        assertEquals(2, dao.loads)
     }
 
     @Test
-    fun `tipo desconhecido no aparelho vira estabelecimento`() {
-        values["profile_type"] = "ADMIN"
+    fun `tipo desconhecido no banco vira estabelecimento`() {
+        val dao = FakeDao().apply { row = UserProfileEntity.from(profile).copy(profileType = "ADMIN") }
 
-        val loaded = SharedPrefsSessionStore(context).load()
-
-        assertEquals(UserProfile("", "", "", ProfileType.ESTABLISHMENT), loaded)
+        assertEquals(ProfileType.ESTABLISHMENT, RoomSessionStore(dao).load()?.profileType)
     }
 
     @Test
-    fun `clear apaga a sessao`() {
-        val store = SharedPrefsSessionStore(context)
+    fun `clear apaga o perfil do banco`() {
+        val dao = FakeDao()
+        val store = RoomSessionStore(dao)
         store.save(profile)
 
         store.clear()
 
         assertNull(store.load())
+        assertNull(dao.row)
     }
 }

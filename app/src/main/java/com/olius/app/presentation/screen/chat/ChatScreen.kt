@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -25,7 +26,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,7 +52,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Description
@@ -76,14 +75,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olius.app.R
 import com.olius.app.domain.entity.AttachmentKind
@@ -101,19 +104,15 @@ import com.olius.app.presentation.theme.OliusCampoBorda
 import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusTituloMarrom
+import com.olius.app.presentation.theme.OliusSuperficie
 
-// Perguntas de exemplo da tela de boas-vindas — as mesmas das referências,
-// pra dar pra ver as respostas mockadas (relatório e impactos) com um toque.
 private const val SUGGESTION_REPORT =
     "OlivIA, registrei 67 litros de óleo no mês passado, isso é bom? Faça um relatório sustentável."
 private const val SUGGESTION_IMPACT = "Quais são os impactos ambientais de não registrar o meu óleo?"
 
-/**
- * Tela da OlivIA. Sem mensagens mostra as boas-vindas (ref_chat.png); com
- * mensagens, a conversa (ref_chat_message.png). O "+" abre o menu de
- * Câmera/Arquivos/Fotos (ref_chat_plus.png), cada um abrindo o app/seletor
- * correspondente do celular.
- */
+private const val DISABLED_BUTTON_ALPHA = 0.35f
+
+/** Tela da OlivIA. */
 @Composable
 fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -132,26 +131,12 @@ fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewMod
                 MessagesList(messages = state.messages, isGenerating = state.isGenerating)
             }
 
-            if (state.isAttachmentMenuOpen) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = viewModel::onDismissAttachmentMenu
-                        )
-                )
-            }
-            // Fecha o menu ao escolher — se a pessoa cancelar o seletor, não fica aberto.
             AttachmentMenu(
                 visible = state.isAttachmentMenuOpen,
+                onDismiss = viewModel::onDismissAttachmentMenu,
                 onCamera = { viewModel.onDismissAttachmentMenu(); pickers.openCamera() },
                 onFiles = { viewModel.onDismissAttachmentMenu(); pickers.openFiles() },
-                onPhotos = { viewModel.onDismissAttachmentMenu(); pickers.openPhotos() },
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 10.dp, bottom = 8.dp)
+                onPhotos = { viewModel.onDismissAttachmentMenu(); pickers.openPhotos() }
             )
         }
 
@@ -167,10 +152,8 @@ fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewMod
             isMenuOpen = state.isAttachmentMenuOpen,
             onPlusClick = viewModel::onToggleAttachmentMenu,
             onSend = viewModel::onSend,
-            onStop = viewModel::onStopGenerating,
-            onVoice = { Toast.makeText(context, "Mensagem de voz em breve", Toast.LENGTH_SHORT).show() }
+            onStop = viewModel::onStopGenerating
         )
-        // O campo fica logo acima do menu inferior (que é sobreposto — ver MainScaffoldScreen).
         Spacer(
             Modifier
                 .navigationBarsPadding()
@@ -178,10 +161,6 @@ fun ChatScreen(topBarState: OliusTopBarState, viewModel: ChatViewModel = viewMod
         )
     }
 }
-
-// ---------------------------------------------------------------------------
-// Boas-vindas (ref_chat.png)
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun WelcomeContent(onSuggestionClick: (String) -> Unit) {
@@ -218,11 +197,7 @@ private fun WelcomeContent(onSuggestionClick: (String) -> Unit) {
     }
 }
 
-/**
- * Logo da Olius + estrela de 4 pontas (ref_chat.png). Usa a logo grande em
- * vez do ícone da navbar (`chat_olius_selected`), que é pequeno e fica
- * pixelado ampliado.
- */
+/** Logo da Olius + estrela de 4 pontas. */
 @Composable
 private fun OlivIAIllustration() {
     Box(Modifier.size(width = 190.dp, height = 180.dp)) {
@@ -269,14 +244,9 @@ private fun SuggestionChip(text: String, onClick: () -> Unit) {
     )
 }
 
-// ---------------------------------------------------------------------------
-// Conversa (ref_chat_message.png)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun MessagesList(messages: List<ChatMessage>, isGenerating: Boolean) {
     val listState = rememberLazyListState()
-    // Acompanha a resposta enquanto ela chega: rola até o fim a cada mudança.
     LaunchedEffect(messages) {
         listState.scrollToItem(messages.lastIndex, scrollOffset = 10_000)
     }
@@ -382,10 +352,6 @@ private fun PulsingText(text: String) {
     Text(text, fontSize = 14.sp, color = OliusTextoSecundario, modifier = Modifier.alpha(alpha))
 }
 
-// ---------------------------------------------------------------------------
-// Campo de texto + menu "+" (ref_chat_plus.png)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun ChatInputBar(
     value: String,
@@ -395,8 +361,7 @@ private fun ChatInputBar(
     isMenuOpen: Boolean,
     onPlusClick: () -> Unit,
     onSend: () -> Unit,
-    onStop: () -> Unit,
-    onVoice: () -> Unit
+    onStop: () -> Unit
 ) {
     val plusRotation by animateFloatAsState(if (isMenuOpen) 45f else 0f, label = "plusRotation")
     Row(
@@ -404,7 +369,7 @@ private fun ChatInputBar(
             .fillMaxWidth()
             .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(26.dp))
-            .background(Color.White)
+            .background(OliusSuperficie)
             .border(BorderStroke(1.dp, OliusCampoBorda), RoundedCornerShape(26.dp))
             .padding(start = 4.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -434,17 +399,17 @@ private fun ChatInputBar(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        val (icon, description, action) = when {
-            isGenerating -> Triple(Icons.Filled.Stop, "Parar resposta", onStop)
-            canSend -> Triple(Icons.Filled.ArrowUpward, "Enviar", onSend)
-            else -> Triple(Icons.Filled.GraphicEq, "Mensagem de voz", onVoice)
-        }
+        val (icon, description, action) =
+            if (isGenerating) Triple(Icons.Filled.Stop, "Parar resposta", onStop)
+            else Triple(Icons.Filled.ArrowUpward, "Enviar", onSend)
+        val enabled = isGenerating || canSend
         Box(
             modifier = Modifier
                 .size(36.dp)
+                .alpha(if (enabled) 1f else DISABLED_BUTTON_ALPHA)
                 .clip(CircleShape)
                 .background(OliusBotaoEscuro)
-                .clickable(onClick = action),
+                .clickable(enabled = enabled, onClick = action),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = description, tint = Color.White, modifier = Modifier.size(20.dp))
@@ -452,21 +417,33 @@ private fun ChatInputBar(
     }
 }
 
+/** Menu do "+" num Popup focável, no canto inferior esquerdo da área da conversa. */
 @Composable
 private fun AttachmentMenu(
     visible: Boolean,
+    onDismiss: () -> Unit,
     onCamera: () -> Unit,
     onFiles: () -> Unit,
-    onPhotos: () -> Unit,
-    modifier: Modifier = Modifier
+    onPhotos: () -> Unit
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + scaleIn(initialScale = 0.9f),
-        exit = fadeOut() + scaleOut(targetScale = 0.9f),
-        modifier = modifier
+    val transition = remember { MutableTransitionState(false) }
+    transition.targetState = visible
+    if (!transition.currentState && !transition.targetState) return
+
+    val offset = with(LocalDensity.current) { IntOffset(10.dp.roundToPx(), -8.dp.roundToPx()) }
+    Popup(
+        alignment = Alignment.BottomStart,
+        offset = offset,
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(focusable = true)
     ) {
-        AttachmentMenuCard(onCamera = onCamera, onFiles = onFiles, onPhotos = onPhotos)
+        AnimatedVisibility(
+            visibleState = transition,
+            enter = fadeIn() + scaleIn(initialScale = 0.9f),
+            exit = fadeOut() + scaleOut(targetScale = 0.9f)
+        ) {
+            AttachmentMenuCard(onCamera = onCamera, onFiles = onFiles, onPhotos = onPhotos)
+        }
     }
 }
 
@@ -474,7 +451,7 @@ private fun AttachmentMenu(
 private fun AttachmentMenuCard(onCamera: () -> Unit, onFiles: () -> Unit, onPhotos: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(22.dp),
-        color = Color.White,
+        color = OliusSuperficie,
         shadowElevation = 10.dp,
         modifier = Modifier.width(180.dp)
     ) {
@@ -517,20 +494,13 @@ private fun PendingAttachmentChip(attachment: ChatAttachment, onRemove: () -> Un
     }
 }
 
-// ---------------------------------------------------------------------------
-// Seletores do sistema (câmera, arquivos, galeria)
-// ---------------------------------------------------------------------------
-
 private class AttachmentPickers(
     val openCamera: () -> Unit,
     val openFiles: () -> Unit,
     val openPhotos: () -> Unit
 )
 
-/**
- * Nenhum dos 3 precisa de permissão: a câmera é aberta pelo app de câmera do
- * sistema (TakePicturePreview) e arquivos/fotos pelos seletores do Android.
- */
+/** Nenhum dos 3 precisa de permissão. */
 @Composable
 private fun rememberAttachmentPickers(context: Context, onPicked: (ChatAttachment) -> Unit): AttachmentPickers {
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->

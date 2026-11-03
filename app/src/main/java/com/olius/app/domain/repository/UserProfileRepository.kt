@@ -1,24 +1,27 @@
 package com.olius.app.domain.repository
 
-import com.olius.app.domain.entity.ProfileRegistration
+import com.olius.app.domain.entity.ProfileUpdate
+import com.olius.app.domain.entity.RegistrationAddress
 import com.olius.app.domain.entity.UserProfile
 
-/**
- * Perfil do usuário no backend principal. O backend identifica a pessoa pelo
- * token do Firebase (Bearer) e devolve o `users.id` e o `user_type` do Postgres.
- */
+/** Perfil do usuário na Core. */
 interface UserProfileRepository {
-
-    /** Perfil salvo no aparelho (sem rede). null = ainda não sincronizou nenhuma vez. */
+    /** Perfil salvo no aparelho (sem rede). */
     fun cachedProfile(): UserProfile?
 
-    /** GET /users/me. Result.failure(ProfileNotFoundException) quando ainda não existe. */
+    /** GET /users/me; o resultado também atualiza o cache. */
     suspend fun fetchMyProfile(): Result<UserProfile>
 
-    /** POST /users: cria `users` + `establishment`/`citizens` e devolve o perfil com o id do banco. */
-    suspend fun createProfile(registration: ProfileRegistration): Result<UserProfile>
+    /** PATCH /users/me {name, email, telephone} (ainda NÃO existe na Core). */
+    suspend fun updateMyProfile(update: ProfileUpdate): Result<UserProfile>
 
-    /** Guarda localmente (ex.: perfil provisório quando o backend está fora). */
+    /** Endereço do cadastro (GET /users/me); null para quem não tem, como o cidadão. */
+    suspend fun fetchMyAddress(): Result<RegistrationAddress?>
+
+    /** Coletor = GET /pevs/me com status APPROVED (sem PEV → false). */
+    suspend fun fetchCollectorStatus(): Result<Boolean>
+
+    /** Guarda localmente. */
     fun saveLocal(profile: UserProfile)
 
     /** Logout. */

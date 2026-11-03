@@ -6,7 +6,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class SplashViewModelTest {
-
     private val repository = FakeUserRepository()
     private val viewModel = SplashViewModel(IsUserLoggedInUseCase(repository))
 

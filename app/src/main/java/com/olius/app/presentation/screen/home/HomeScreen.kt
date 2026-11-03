@@ -1,6 +1,27 @@
 package com.olius.app.presentation.screen.home
 
+import androidx.compose.foundation.layout.PaddingValues
+import com.olius.app.domain.entity.CollectorRequest
+import com.olius.app.domain.entity.PickupRequestSummary
+import com.olius.app.domain.entity.Tip
+import com.olius.app.presentation.components.OliusIconTab
+import com.olius.app.presentation.components.OliusIconTabs
+import com.olius.app.presentation.components.PevPointCard
+import com.olius.app.presentation.theme.OliusLaranjaChipFundo
+import com.olius.app.presentation.theme.OliusLaranjaVivo
+import com.olius.app.presentation.theme.OliusSeloAvisoFundo
+import com.olius.app.presentation.theme.OliusTextoCard
+import com.olius.app.presentation.theme.OliusTextoCardSecundario
+import com.olius.app.presentation.theme.OliusVermelhoDescartar
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.ui.graphics.Brush
+import com.olius.app.domain.entity.ProfileType
+import com.olius.app.presentation.theme.OliusLaranjaGradiente
+import com.olius.app.presentation.theme.OliusTituloMarrom
+import com.olius.app.presentation.theme.OliusTituloMarromClaro
 import androidx.compose.animation.AnimatedVisibility
+import android.provider.Settings
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -24,12 +45,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -38,14 +57,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -64,9 +82,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +97,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,8 +110,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olius.app.R
-import com.olius.app.presentation.theme.DecorativeBackground
+import com.olius.app.presentation.components.BOTTOM_NAV_CONTENT_PADDING
+import com.olius.app.presentation.components.OliusTabScaffold
+import com.olius.app.presentation.components.OliusTopBarState
 import com.olius.app.presentation.theme.OliusAmarelo
+import com.olius.app.presentation.theme.OliusTextoPrimarioClaro
 import com.olius.app.presentation.theme.OliusBotaoInativoFundo
 import com.olius.app.presentation.theme.OliusBotaoInativoTexto
 import com.olius.app.presentation.theme.OliusCampoBorda
@@ -104,211 +130,167 @@ import com.olius.app.presentation.theme.OliusTextoPrimario
 import com.olius.app.presentation.theme.OliusTextoSecundario
 import com.olius.app.presentation.theme.OliusVerdeSeloFundo
 import com.olius.app.presentation.theme.OliusVerdeSeloTexto
+import com.olius.app.presentation.theme.OliusSuperficie
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-// Duração da animação de entrada dos bottom sheets (Perfil/Notificações) —
-// igual ao slide dos cards de login/cadastro em PerfilType.kt
-// (HEADER_INTRO_DURATION_MS/AnimatedContent de lá usa 840ms com a mesma
-// easing). Ver documentação em HOME_SCREEN.md pra reaproveitar em outro lugar.
 private const val SHEET_ENTER_DURATION_MS = 840
 private const val SHEET_EXIT_DURATION_MS = 300
 
-/**
- * Tela Home (ver referencia_home.png / ref_home_cell_1.png / ref_home_cell_2.png).
- * Só monta a UI a partir do HomeUiState; toda a lógica de negócio (registrar
- * óleo, solicitar coleta, notificações, logout) fica no HomeViewModel — a
- * maior parte das funções lá são placeholders vazios de propósito (ver
- * HOME_SCREEN.md).
- */
+private val NOTIFICATIONS_LIST_HEIGHT = 440.dp
+
+private const val STAT_COUNT_DURATION_MS = 2000
+
+private const val SUSTAINABILITY_LEVEL_LABEL = "Nível de sustentabilidade"
+
+/** Tela Home. */
 @Composable
 fun HomeScreen(
+    topBarState: OliusTopBarState,
     viewModel: HomeViewModel = viewModel(),
-    onLogout: () -> Unit = {}
+    onOpenQrCode: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val isPickupEnabled = viewModel.canRequestPickup(state)
+    val countMemory = rememberSaveable(saver = StatCountMemory.Saver) { StatCountMemory() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        DecorativeBackground(isRow = true)
+    OliusTabScaffold(topBarState = topBarState) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
         ) {
-            Spacer(Modifier.height(12.dp))
-            HomeTopBar(
-                hasUnreadNotifications = state.hasUnreadNotifications,
-                onNotificationsClick = viewModel::onNotificationsClick,
-                onProfileClick = viewModel::onProfileClick
-            )
-            Spacer(Modifier.height(24.dp))
-            WelcomeSection(userName = state.userName)
-            Spacer(Modifier.height(20.dp))
-            ActionButtonsRow(
-                isPickupEnabled = isPickupEnabled,
-                onRegisterOil = viewModel::onRegisterOilClick,
-                onRequestPickup = viewModel::onRequestPickupClick
-            )
-            Spacer(Modifier.height(22.dp))
-            Text(state.referenceMonthLabel, fontSize = 13.sp, color = OliusTextoSecundario)
-            Spacer(Modifier.height(10.dp))
-            StatsGrid(state = state)
-            Spacer(Modifier.height(16.dp))
-            OilLevelCard(state = state)
-            Spacer(Modifier.height(16.dp))
-            SustainabilityLevelCard(state = state)
-            // Espaço extra no final: o conteúdo agora rola por baixo do menu
-            // inferior (efeito de vidro — ver MainScaffoldScreen.kt), então
-            // esse respiro evita que o último card fique colado embaixo dele.
-            Spacer(Modifier.height(110.dp))
+            if (state.isOffline) {
+                Spacer(Modifier.height(24.dp))
+            } else {
+                Spacer(Modifier.height(24.dp))
+                WelcomeSection(userName = state.userName, onQrCodeClick = onOpenQrCode.takeIf { state.showQrCode })
+                Spacer(Modifier.height(20.dp))
+                when {
+                    state.profileType == ProfileType.CITIZEN -> CitizenHomeContent(
+                        state = state,
+                        countMemory = countMemory,
+                        onRegisterOil = viewModel::onRegisterOilClick.takeIf { state.isCollector },
+                        onTabSelected = viewModel::onCitizenTabSelected
+                    )
+                    else -> {
+                        ActionButtonsRow(
+                            isPickupEnabled = isPickupEnabled,
+                            onRegisterOil = viewModel::onRegisterOilClick,
+                            onRequestPickup = viewModel::onRequestPickupClick
+                        )
+                        if (state.isCollector) {
+                            Spacer(Modifier.height(22.dp))
+                            OliusIconTabs(
+                                tabs = listOf(
+                                    OliusIconTab(CollectorHomeTab.MY_DATA, "Meus Dados", R.drawable.ic_tab_my_data),
+                                    OliusIconTab(CollectorHomeTab.REQUESTS, "Solicitações", R.drawable.ic_tab_requests)
+                                ),
+                                selected = state.collectorTab,
+                                onSelect = viewModel::onCollectorTabSelected
+                            )
+                        }
+                        if (state.isCollector && state.collectorTab == CollectorHomeTab.REQUESTS) {
+                            Spacer(Modifier.height(16.dp))
+                            CollectorRequestsList(
+                                requests = state.collectorRequests,
+                                onCollect = viewModel::onCollectRequest,
+                                onDiscard = viewModel::onDiscardRequest
+                            )
+                        } else {
+                            EstablishmentDashboard(state = state, isPickupEnabled = isPickupEnabled, countMemory = countMemory)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(BOTTOM_NAV_CONTENT_PADDING))
         }
+    }
 
-        if (state.isRegisterOilDialogOpen) {
-            val volume = state.registerOilVolumeInput.toDoubleOrNull() ?: 0.0
-            RegisterOilDialog(
-                volumeInput = state.registerOilVolumeInput,
-                estimatedWaterLiters = viewModel.estimateWaterPreserved(volume),
-                estimatedCo2Kg = viewModel.estimateCo2Avoided(volume),
-                onVolumeChange = viewModel::onRegisterOilVolumeChange,
-                onConfirm = viewModel::onConfirmRegisterOil,
-                onDismiss = viewModel::onDismissRegisterOilDialog
+    if (state.isRegisterOilDialogOpen) {
+        val volume = state.registerOilVolumeInput.toDoubleOrNull() ?: 0.0
+        RegisterOilDialog(
+            volumeInput = state.registerOilVolumeInput,
+            estimatedWaterLiters = viewModel.estimateWaterPreserved(volume),
+            estimatedCo2Kg = viewModel.estimateCo2Avoided(volume),
+            onVolumeChange = viewModel::onRegisterOilVolumeChange,
+            onConfirm = viewModel::onConfirmRegisterOil,
+            onDismiss = viewModel::onDismissRegisterOilDialog
+        )
+    }
+
+    if (state.isRequestPickupDialogOpen) {
+        RequestPickupDialog(
+            state = state,
+            onVolumeChange = viewModel::onRequestPickupVolumeChange,
+            onDateChange = viewModel::onRequestPickupDateChange,
+            onNotesChange = viewModel::onRequestPickupNotesChange,
+            onConfirm = viewModel::onConfirmRequestPickup,
+            onDismiss = viewModel::onDismissRequestPickupDialog
+        )
+    }
+}
+
+/** Bottom sheet de Notificações. */
+@Composable
+fun HomeOverlaySheets(viewModel: HomeViewModel) {
+    val state by viewModel.uiState.collectAsState()
+
+    if (state.isNotificationsSheetOpen) {
+        SlideUpDialog(onDismissRequest = viewModel::onDismissNotificationsSheet) { animatedDismiss ->
+            NotificationsSheetContent(
+                filter = state.notificationFilter,
+                notifications = state.filteredNotifications,
+                onFilterChange = viewModel::onNotificationFilterChange,
+                onAction = viewModel::onNotificationActionClick,
+                onClose = animatedDismiss
             )
         }
+    }
+}
 
-        if (state.isRequestPickupDialogOpen) {
-            RequestPickupDialog(
-                state = state,
-                onVolumeChange = viewModel::onRequestPickupVolumeChange,
-                onDateChange = viewModel::onRequestPickupDateChange,
-                onNotesChange = viewModel::onRequestPickupNotesChange,
-                onConfirm = viewModel::onConfirmRequestPickup,
-                onDismiss = viewModel::onDismissRequestPickupDialog
-            )
+@Composable
+private fun WelcomeSection(userName: String, onQrCodeClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("Olá, $userName!", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = OliusTextoPrimario)
+            var hour by remember { mutableIntStateOf(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(60_000)
+                    hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                }
+            }
+            Text(greetingSubtitle(hour), fontSize = 14.sp, color = OliusTextoSecundario)
         }
-
-        if (state.isProfileSheetOpen) {
-            SlideUpDialog(onDismissRequest = viewModel::onDismissProfileSheet) { animatedDismiss ->
-                ProfileSheetContent(
-                    fullName = state.fullName,
-                    accountSubtitle = state.accountSubtitle,
-                    onAddAccount = viewModel::onAddAccountClick,
-                    onLogout = {
-                        viewModel.onLogoutClick()
-                        onLogout()
-                    },
-                    onClose = animatedDismiss
-                )
+        if (onQrCodeClick != null) {
+            Button(
+                onClick = onQrCodeClick,
+                modifier = Modifier.height(42.dp),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = OliusAmarelo, contentColor = OliusTituloMarromClaro)
+            ) {
+                Image(painterResource(R.drawable.ic_qr_code), contentDescription = null, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("QR Code", fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
         }
-
-        if (state.isNotificationsSheetOpen) {
-            SlideUpDialog(onDismissRequest = viewModel::onDismissNotificationsSheet) { animatedDismiss ->
-                NotificationsSheetContent(
-                    filter = state.notificationFilter,
-                    notifications = state.filteredNotifications,
-                    onFilterChange = viewModel::onNotificationFilterChange,
-                    onAction = viewModel::onNotificationActionClick,
-                    onClose = animatedDismiss
-                )
-            }
-        }
     }
 }
 
-// ---------------------------------------------------------------------------
-// Header: logo + "Home" + notificações + avatar
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun HomeTopBar(
-    hasUnreadNotifications: Boolean,
-    onNotificationsClick: () -> Unit,
-    onProfileClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Image(
-            painter = painterResource(R.drawable.logo_sem_fundo),
-            contentDescription = "Olius",
-            modifier = Modifier.size(30.dp)
-        )
-        Text(
-            text = "Home",
-            fontSize = 14.sp,
-            color = OliusTextoSecundario,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f)
-        )
-        IconButton(onClick = onNotificationsClick) {
-            Image(
-                painter = painterResource(
-                    if (hasUnreadNotifications) R.drawable.notification_true else R.drawable.notification_false
-                ),
-                contentDescription = "Notificações",
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        ProfileAvatar(onClick = onProfileClick)
-    }
+/** 5h–11h bom dia, 12h–17h boa tarde, 18h–4h boa noite (madrugada não é "bom dia"). */
+internal fun greetingSubtitle(hour: Int): String = when (hour) {
+    in 5..11 -> "Bom dia!"
+    in 12..17 -> "Boa tarde!"
+    else -> "Boa noite!"
 }
 
-/**
- * TODO: trocar pelo avatar real do usuário (ex.: Coil + `profileImageUrl`)
- * quando existir integração com o backend. Por enquanto usa um placeholder
- * com iniciais/ícone, igual referência (círculo amarelo).
- */
-@Composable
-private fun ProfileAvatar(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(OliusAmarelo)
-            .border(BorderStroke(2.dp, OliusAmarelo), CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(Icons.Filled.Person, contentDescription = "Perfil", tint = Color.Black, modifier = Modifier.size(18.dp))
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Saudação
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun WelcomeSection(userName: String, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Text("Olá, $userName!", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = OliusTextoPrimario)
-        Text(greetingSubtitle(), fontSize = 14.sp, color = OliusTextoSecundario)
-    }
-}
-
-private fun greetingSubtitle(): String {
-    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    return when {
-        hour < 12 -> "Bom dia!"
-        hour < 18 -> "Boa tarde!"
-        else -> "Boa noite!"
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Botões de ação: Registrar óleo / Solicitar coleta
-// ---------------------------------------------------------------------------
-
-/**
- * Cores iguais às de ref_home_cell_1.png / referencia_home.png: "Registrar
- * óleo" sempre amarelo; "Solicitar coleta" fica LARANJA quando habilitado e
- * CINZA quando não (ver [HomeViewModel.canRequestPickup]).
- */
 @Composable
 private fun ActionButtonsRow(
     isPickupEnabled: Boolean,
@@ -355,41 +337,43 @@ private fun ActionButtonsRow(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Grid 2x2 de indicadores
-// ---------------------------------------------------------------------------
+@Composable
+private fun StatsGrid(state: HomeUiState, countMemory: StatCountMemory, modifier: Modifier = Modifier) {
+    ImpactStatsGrid(
+        oilLiters = state.oilCollectedLiters,
+        waterLiters = state.waterPreservedLiters,
+        co2Kg = state.co2AvoidedKg,
+        biodieselLiters = state.biodieselLiters,
+        modifier = modifier,
+        countMemory = countMemory
+    )
+}
 
 @Composable
-private fun StatsGrid(state: HomeUiState, modifier: Modifier = Modifier) {
+internal fun ImpactStatsGrid(
+    oilLiters: Double,
+    waterLiters: Double,
+    co2Kg: Double,
+    biodieselLiters: Double,
+    modifier: Modifier = Modifier,
+    countMemory: StatCountMemory? = null
+) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatCard(
-                iconRes = R.drawable.water,
-                label = "Água Preservada",
-                value = formatCompact(state.waterPreservedLiters),
-                unit = "L",
-                modifier = Modifier.weight(1f)
-            )
-            StatCard(
-                iconRes = R.drawable.oil,
-                label = "Óleo Coletado",
-                value = formatNumber(state.oilCollectedLiters),
-                unit = "L",
-                modifier = Modifier.weight(1f)
-            )
+            OilAndWaterStats(oilLiters, waterLiters, countMemory)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(
                 iconRes = R.drawable.grass,
                 label = "CO² Evitado",
-                value = formatNumber(state.co2AvoidedKg),
+                value = countingText("co2", co2Kg, compact = false, memory = countMemory),
                 unit = "Kg",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 iconRes = R.drawable.fire,
                 label = "Biodiesel",
-                value = formatNumber(state.biodieselLiters),
+                value = countingText("biodiesel", biodieselLiters, compact = false, memory = countMemory),
                 unit = "L",
                 modifier = Modifier.weight(1f)
             )
@@ -397,13 +381,293 @@ private fun StatsGrid(state: HomeUiState, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * Ícone grande e apagado (`alpha`) vazando pelo canto inferior direito, por
- * baixo do conteúdo — igual às referências (ref_home_cell_1.png): cada card
- * tem uma marca d'água do próprio ícone, bem maior e bem mais clara que o
- * ícone pequeno ao lado do rótulo. O `Surface` do card recorta (`shape`)
- * a parte que vaza pra fora, então não precisa de clip manual aqui.
- */
+@Composable
+private fun RowScope.OilAndWaterStats(oilLiters: Double, waterLiters: Double, countMemory: StatCountMemory?) {
+    StatCard(
+        iconRes = R.drawable.oil,
+        label = "Óleo Coletado",
+        value = countingText("oil", oilLiters, compact = false, memory = countMemory),
+        unit = "L",
+        modifier = Modifier.weight(1f)
+    )
+    StatCard(
+        iconRes = R.drawable.water,
+        label = "Água Preservada",
+        value = countingText("water", waterLiters, compact = true, memory = countMemory),
+        unit = "L",
+        modifier = Modifier.weight(1f)
+    )
+}
+
+/** Último valor que cada card já mostrou ("oil", "water", "co2", "biodiesel"). */
+internal class StatCountMemory(initial: Map<String, Double> = emptyMap()) {
+    private val shown = HashMap(initial)
+
+    fun lastShown(key: String): Double = shown[key] ?: 0.0
+
+    fun markShown(key: String, value: Double) {
+        shown[key] = value
+    }
+
+    companion object {
+        val Saver = Saver<StatCountMemory, HashMap<String, Double>>(
+            save = { HashMap(it.shown) },
+            restore = { StatCountMemory(it) }
+        )
+    }
+}
+
+/** Texto do card contando do último valor mostrado (0 na primeira vez) até [target]. */
+@Composable
+private fun countingText(key: String, target: Double, compact: Boolean, memory: StatCountMemory?): String {
+    if (memory == null) return if (compact) formatCompact(target) else formatNumber(target)
+    val context = LocalContext.current
+    val animationsOff = remember(context) {
+        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }
+    var shown by remember(key) { mutableDoubleStateOf(memory.lastShown(key)) }
+    LaunchedEffect(key, target) {
+        if (!animationsOff && shown != target) {
+            val from = shown
+            Animatable(0f).animateTo(1f, tween(STAT_COUNT_DURATION_MS, easing = FastOutSlowInEasing)) {
+                shown = from + (target - from) * value
+            }
+        }
+        shown = target
+        memory.markShown(key, target)
+    }
+    return formatCounting(shown, target, compact)
+}
+
+@Composable
+private fun EstablishmentDashboard(state: HomeUiState, isPickupEnabled: Boolean, countMemory: StatCountMemory) {
+    Spacer(Modifier.height(22.dp))
+    Text(state.referenceMonthLabel, fontSize = 13.sp, color = OliusTextoSecundario)
+    Spacer(Modifier.height(10.dp))
+    StatsGrid(state = state, countMemory = countMemory)
+    Spacer(Modifier.height(16.dp))
+    OilLevelCard(state = state, isPickupEnabled = isPickupEnabled)
+    if (state.pendingRequests.isNotEmpty()) {
+        Spacer(Modifier.height(20.dp))
+        PendingRequestsSection(requests = state.pendingRequests)
+    }
+    Spacer(Modifier.height(16.dp))
+    SustainabilityLevelCard(state = state)
+}
+
+/** "Solicitações de Coletas": volume, data e chip "Pendente". */
+@Composable
+private fun PendingRequestsSection(requests: List<PickupRequestSummary>) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(painterResource(R.drawable.ic_truck_dark), contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text("Solicitações de Coletas", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = OliusTextoCard)
+    }
+    Spacer(Modifier.height(10.dp))
+    requests.forEach { request ->
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            shape = RoundedCornerShape(10.dp),
+            color = OliusSuperficie,
+            border = BorderStroke(1.dp, OliusCampoBorda)
+        ) {
+            Row(Modifier.padding(horizontal = 21.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("${formatNumber(request.liters)}L", fontSize = 18.sp, fontWeight = FontWeight.Light, color = OliusTextoCard)
+                    Text(request.dateLabel, fontSize = 12.sp, color = OliusTextoCardSecundario)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(OliusLaranjaChipFundo)
+                        .border(1.dp, OliusLaranjaVivo, RoundedCornerShape(10.dp))
+                        .padding(horizontal = 18.dp, vertical = 4.dp)
+                ) {
+                    Text(request.status.label, fontSize = 12.sp, color = OliusLaranjaVivo)
+                }
+            }
+        }
+    }
+}
+
+/** Aba "Solicitações" do Coletor: Coletar ou Descartar. */
+@Composable
+private fun CollectorRequestsList(
+    requests: List<CollectorRequest>,
+    onCollect: (CollectorRequest) -> Unit,
+    onDiscard: (CollectorRequest) -> Unit
+) {
+    if (requests.isEmpty()) {
+        Text(
+            "Nenhuma solicitação no momento.",
+            fontSize = 13.sp,
+            color = OliusTextoSecundario,
+            modifier = Modifier.padding(vertical = 24.dp)
+        )
+    }
+    requests.forEach { request ->
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            shape = RoundedCornerShape(9.dp),
+            color = OliusSuperficie,
+            border = BorderStroke(1.dp, OliusCampoBorda)
+        ) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
+                Row {
+                    Column(Modifier.weight(1f)) {
+                        Text(request.establishmentName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OliusTextoCard)
+                        Text(request.dateLabel, fontSize = 10.sp, color = OliusTextoCardSecundario)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(formatNumber(request.liters), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = OliusAmarelo)
+                            Text("L", fontSize = 11.sp, color = OliusTextoCardSecundario)
+                        }
+                        Text("Óleo para coletar", fontSize = 10.sp, color = OliusTextoCardSecundario)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onCollect(request) },
+                        modifier = Modifier.weight(1f).height(32.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OliusAmarelo, contentColor = OliusTextoPrimarioClaro)
+                    ) { Text("Coletar", fontSize = 12.sp) }
+                    Button(
+                        onClick = { onDiscard(request) },
+                        modifier = Modifier.weight(1f).height(32.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OliusVermelhoDescartar, contentColor = Color.White)
+                    ) { Text("Descartar", fontSize = 12.sp) }
+                }
+            }
+        }
+    }
+}
+
+/** B2C: sem "Solicitar coleta", tanque, CO² e biodiesel (o cidadão entrega no PEV). */
+@Composable
+private fun CitizenHomeContent(
+    state: HomeUiState,
+    countMemory: StatCountMemory,
+    onRegisterOil: (() -> Unit)?,
+    onTabSelected: (CitizenHomeTab) -> Unit
+) {
+    CitizenBanner(onRegisterOil = onRegisterOil)
+    if (state.currentLevelProgressLiters > 0.0) {
+        Spacer(Modifier.height(16.dp))
+        CitizenLevelCard(state = state)
+    }
+    Spacer(Modifier.height(22.dp))
+    Text(state.referenceMonthLabel, fontSize = 13.sp, color = OliusTextoSecundario)
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OilAndWaterStats(state.oilCollectedLiters, state.waterPreservedLiters, countMemory)
+    }
+    Spacer(Modifier.height(20.dp))
+    OliusIconTabs(
+        tabs = listOf(
+            OliusIconTab(CitizenHomeTab.PEV_POINTS, "Pontos PEV", R.drawable.ic_tab_pin),
+            OliusIconTab(CitizenHomeTab.TIPS, "Dicas", R.drawable.ic_tab_book)
+        ),
+        selected = state.citizenTab,
+        onSelect = onTabSelected
+    )
+    Spacer(Modifier.height(16.dp))
+    when (state.citizenTab) {
+        CitizenHomeTab.PEV_POINTS -> state.nearbyPoints.forEach { point ->
+            PevPointCard(point = point, modifier = Modifier.padding(bottom = 16.dp))
+        }
+        CitizenHomeTab.TIPS -> state.tips.forEach { tip -> TipCard(tip) }
+    }
+}
+
+@Composable
+private fun TipCard(tip: Tip) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = OliusSuperficie,
+        border = BorderStroke(1.dp, OliusCampoBorda)
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(painterResource(R.drawable.ic_star_outline), contentDescription = null, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(tip.title, fontSize = 12.sp, color = OliusTextoCard)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(tip.description, fontSize = 11.sp, color = OliusTextoCardSecundario)
+        }
+    }
+}
+
+/** [onRegisterOil] null = quem não é PEV: o banner só orienta a levar o óleo a um ponto. */
+@Composable
+private fun CitizenBanner(onRegisterOil: (() -> Unit)?) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(listOf(OliusAmarelo, OliusLaranjaGradiente)))
+            .padding(20.dp)
+    ) {
+        Text("Faça a Diferença Hoje!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = OliusTituloMarromClaro)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (onRegisterOil != null) "Registre seu óleo e ajude a preservar milhares de litros de água"
+            else "Leve seu óleo usado a um ponto de coleta e ajude a preservar milhares de litros de água",
+            fontSize = 12.sp,
+            color = OliusTituloMarromClaro
+        )
+        if (onRegisterOil == null) return@Column
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onRegisterOil,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.6f), contentColor = OliusTituloMarromClaro)
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Registrar óleo", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun CitizenLevelCard(state: HomeUiState) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = OliusSuperficie,
+        border = BorderStroke(1.dp, OliusCampoBorda)
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painter = painterResource(R.drawable.ic_level_silver), contentDescription = "Selo do nível", modifier = Modifier.size(48.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(SUSTAINABILITY_LEVEL_LABEL, fontSize = 11.sp, color = OliusTextoSecundario)
+                Text(
+                    state.levelName ?: "lv. ${state.sustainabilityLevel}",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = OliusTextoSecundario
+                )
+            }
+            Text(
+                "${formatNumber(state.currentLevelProgressLiters)}L",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = OliusTextoPrimario
+            )
+        }
+    }
+}
+
+/** Ícone grande e apagado (`alpha`) vazando pelo canto inferior direito, por baixo do conteúdo. */
 @Composable
 private fun StatCard(
     iconRes: Int,
@@ -415,8 +679,8 @@ private fun StatCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = Color.White,
-        shadowElevation = 2.dp
+        color = OliusSuperficie,
+        border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
         Box {
             Image(
@@ -449,16 +713,12 @@ private fun StatCard(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Nível de óleo acumulado (tanque + selo "Pronto para coleta")
-// ---------------------------------------------------------------------------
-
 @Composable
-private fun OilLevelCard(state: HomeUiState, modifier: Modifier = Modifier) {
+private fun OilLevelCard(state: HomeUiState, isPickupEnabled: Boolean, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = Color.White,
+        color = OliusSuperficie,
         border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
         Column(Modifier.padding(20.dp)) {
@@ -489,8 +749,10 @@ private fun OilLevelCard(state: HomeUiState, modifier: Modifier = Modifier) {
                         color = OliusTextoSecundario
                     )
                     Spacer(Modifier.height(10.dp))
-                    if (state.showPickupReadyBadge) {
+                    if (state.showPickupReadyBadge && isPickupEnabled) {
                         ReadyForPickupBadge()
+                    } else if (state.oilAccumulatedLiters < state.minimumForPickupLiters) {
+                        LevelNotReachedBadge()
                     }
                 }
             }
@@ -507,19 +769,28 @@ private fun ReadyForPickupBadge(modifier: Modifier = Modifier) {
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = OliusVerdeSeloTexto, modifier = Modifier.size(14.dp))
+        Image(painterResource(R.drawable.ic_check_circle), contentDescription = null, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
         Text("Pronto para coleta", color = OliusVerdeSeloTexto, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
-/**
- * Tanque de óleo (ver oil_drop.png): a gota é CINZA quando o tanque está
- * vazio e BRANCA conforme o amarelo sobe — se estiver na metade, metade da
- * gota (a parte "dentro" do amarelo) fica branca e a outra metade cinza.
- * Isso é feito desenhando a gota cinza por baixo e uma cópia branca por
- * cima, recortada (clipToBounds) na mesma fração do preenchimento.
- */
+@Composable
+private fun LevelNotReachedBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(OliusSeloAvisoFundo)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(painterResource(R.drawable.ic_warning_circle), contentDescription = null, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("Nível não atingido", color = OliusLaranjaVivo, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Tanque de óleo: a gota é CINZA quando o tanque está vazio e BRANCA conforme o amarelo sobe. */
 @Composable
 private fun OilTankGauge(fraction: Float, modifier: Modifier = Modifier) {
     val animatedFraction by animateFloatAsState(
@@ -532,10 +803,9 @@ private fun OilTankGauge(fraction: Float, modifier: Modifier = Modifier) {
         modifier = modifier
             .size(width = 84.dp, height = 116.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
+            .background(OliusSuperficie)
             .border(BorderStroke(1.5.dp, OliusCampoBorda), RoundedCornerShape(14.dp))
     ) {
-        // Preenchimento amarelo subindo de baixo pra cima, de acordo com o nível.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -575,20 +845,16 @@ private fun OilTankGauge(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Nível de sustentabilidade (selo + barra de progresso)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun SustainabilityLevelCard(state: HomeUiState, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = Color.White,
+        color = OliusSuperficie,
         border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
         Column(Modifier.padding(20.dp)) {
-            Text("Nível de sustentabilidade", fontSize = 13.sp, color = OliusTextoSecundario)
+            Text(SUSTAINABILITY_LEVEL_LABEL, fontSize = 13.sp, color = OliusTextoSecundario)
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -600,7 +866,7 @@ private fun SustainabilityLevelCard(state: HomeUiState, modifier: Modifier = Mod
                 ) {
                     Image(
                         painter = painterResource(R.drawable.level),
-                        contentDescription = "Nível de sustentabilidade",
+                        contentDescription = SUSTAINABILITY_LEVEL_LABEL,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -621,12 +887,6 @@ private fun SustainabilityLevelCard(state: HomeUiState, modifier: Modifier = Mod
     }
 }
 
-/**
- * Barra bem mais grossa que uma `LinearProgressIndicator` comum, igual à
- * referência (referencia_home.png) — e com o rótulo do total (`targetLabel`,
- * ex.: "100L") escrito DENTRO da própria barra, alinhado à direita, em vez
- * de só no texto acima.
- */
 @Composable
 private fun LevelProgressBar(fraction: Float, targetLabel: String, modifier: Modifier = Modifier) {
     val animatedFraction by animateFloatAsState(
@@ -660,10 +920,6 @@ private fun LevelProgressBar(fraction: Float, targetLabel: String, modifier: Mod
     }
 }
 
-// ---------------------------------------------------------------------------
-// Popup: Registrar Óleo (ver ref_register_oil.png)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun RegisterOilDialog(
     volumeInput: String,
@@ -673,8 +929,8 @@ private fun RegisterOilDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(24.dp), color = Color.White, modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
+    CenteredDialog(onDismiss = onDismiss) {
+        Surface(shape = RoundedCornerShape(24.dp), color = OliusSuperficie, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(24.dp)) {
                 Text(
                     "Registrar Óleo",
@@ -698,12 +954,12 @@ private fun RegisterOilDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(formatThousands(estimatedWaterLiters), color = OliusIconeAgua, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(formatBr(estimatedWaterLiters, maxDecimals = 0), color = OliusIconeAgua, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text("Litros de água preservada", color = OliusTextoSecundario, fontSize = 11.sp)
                     }
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text(formatThousands(estimatedCo2Kg), color = OliusIconeVerde, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("Kg de CO² evitados", color = OliusTextoSecundario, fontSize = 11.sp, textAlign = TextAlign.End)
+                        Text(formatBr(estimatedCo2Kg, maxDecimals = 2), color = OliusIconeVerde, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("kg de CO₂ evitados", color = OliusTextoSecundario, fontSize = 11.sp, textAlign = TextAlign.End)
                     }
                 }
                 Spacer(Modifier.height(20.dp))
@@ -722,6 +978,38 @@ private fun RegisterOilDialog(
     }
 }
 
+/** Popup centralizado (Registrar Óleo / Solicitar Coleta). */
+@Composable
+private fun CenteredDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = onDismiss
+                )
+                .padding(horizontal = 34.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+    }
+}
+
+/** Cores dos campos dos popups (Registrar Óleo / Solicitar Coleta). */
+@Composable
+private fun dialogFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = OliusTextoPrimario,
+    unfocusedTextColor = OliusTextoPrimario,
+    cursorColor = OliusTextoPrimario,
+    focusedBorderColor = OliusAmarelo,
+    unfocusedBorderColor = OliusCampoBorda,
+    focusedContainerColor = OliusSuperficie,
+    unfocusedContainerColor = OliusSuperficie
+)
+
 @Composable
 private fun NumericStepperField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
     OutlinedTextField(
@@ -736,6 +1024,7 @@ private fun NumericStepperField(value: String, onValueChange: (String) -> Unit, 
                 Icon(
                     Icons.Filled.KeyboardArrowUp,
                     contentDescription = "Aumentar volume",
+                    tint = OliusTextoPrimario,
                     modifier = Modifier
                         .size(18.dp)
                         .clickable { onValueChange((((value.toIntOrNull() ?: 0) + 1).toString())) }
@@ -743,6 +1032,7 @@ private fun NumericStepperField(value: String, onValueChange: (String) -> Unit, 
                 Icon(
                     Icons.Filled.KeyboardArrowDown,
                     contentDescription = "Diminuir volume",
+                    tint = OliusTextoPrimario,
                     modifier = Modifier
                         .size(18.dp)
                         .clickable {
@@ -752,18 +1042,9 @@ private fun NumericStepperField(value: String, onValueChange: (String) -> Unit, 
                 )
             }
         },
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = OliusAmarelo,
-            unfocusedBorderColor = OliusCampoBorda,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White
-        )
+        colors = dialogFieldColors()
     )
 }
-
-// ---------------------------------------------------------------------------
-// Popup: Solicitar Coleta (ver ref_solicitar_coleta.png)
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun RequestPickupDialog(
@@ -774,8 +1055,8 @@ private fun RequestPickupDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(24.dp), color = Color.White, modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
+    CenteredDialog(onDismiss = onDismiss) {
+        Surface(shape = RoundedCornerShape(24.dp), color = OliusSuperficie, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(24.dp)) {
                 Box(Modifier.fillMaxWidth()) {
                     Text(
@@ -806,12 +1087,7 @@ private fun RequestPickupDialog(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = OliusAmarelo,
-                        unfocusedBorderColor = OliusCampoBorda,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
-                    )
+                    colors = dialogFieldColors()
                 )
                 Spacer(Modifier.height(20.dp))
                 Button(
@@ -848,12 +1124,7 @@ private fun BorderedDateField(value: String, onValueChange: (String) -> Unit, mo
                 Icon(Icons.Filled.CalendarMonth, contentDescription = "Abrir calendário", tint = OliusTextoSecundario)
             }
         },
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = OliusAmarelo,
-            unfocusedBorderColor = OliusCampoBorda,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White
-        )
+        colors = dialogFieldColors()
     )
 
     if (showPicker) {
@@ -875,15 +1146,6 @@ private fun BorderedDateField(value: String, onValueChange: (String) -> Unit, mo
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Bottom sheet genérico animado de baixo pra cima (Perfil/Notificações) —
-// mesma animação de entrada usada pelos cards de login/cadastro em
-// PerfilType.kt (slideInVertically + fadeIn, tween ~840ms, FastOutSlowInEasing).
-// Implementado com Dialog (não ModalBottomSheet padrão) pra reaproveitar
-// exatamente essa animação e cobrir a tela inteira, inclusive por cima do
-// menu inferior fixo — ver HOME_SCREEN.md.
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun SlideUpDialog(
@@ -948,100 +1210,6 @@ private fun SlideUpDialog(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Bottom sheet: Perfil / Configurações (ver ref_perfil.png)
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun ProfileSheetContent(
-    fullName: String,
-    accountSubtitle: String,
-    onAddAccount: () -> Unit,
-    onLogout: () -> Unit,
-    onClose: () -> Unit
-) {
-    Box(Modifier.fillMaxWidth()) {
-        IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterStart)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Fechar", tint = Color.White)
-        }
-        Text(
-            "Configurações",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            modifier = Modifier.align(Alignment.Center)
-        )
-    }
-    Spacer(Modifier.height(24.dp))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(OliusAmarelo),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Filled.Person, contentDescription = null, tint = Color.Black, modifier = Modifier.size(26.dp))
-        }
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(fullName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(accountSubtitle, color = OliusSheetTextoSecundario, fontSize = 11.sp)
-        }
-    }
-    Spacer(Modifier.height(20.dp))
-    HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
-    Spacer(Modifier.height(20.dp))
-    Text("Outras Contas", color = OliusSheetTextoSecundario, fontSize = 12.sp)
-    Spacer(Modifier.height(12.dp))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onAddAccount)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text("Adicionar conta", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            Text(
-                "Crie ou adicione uma nova conta Olius para gerir melhor seu descarte",
-                color = OliusSheetTextoSecundario,
-                fontSize = 11.sp
-            )
-        }
-    }
-    Spacer(Modifier.height(32.dp))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.10f))
-            .clickable(onClick = onLogout)
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text("Sair do aplicativo", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Bottom sheet: Notificações (ver ref_notification.png)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun NotificationsSheetContent(
     filter: NotificationFilter,
@@ -1070,15 +1238,34 @@ private fun NotificationsSheetContent(
     }
     Spacer(Modifier.height(16.dp))
     HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 440.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        notifications.forEach { item ->
-            NotificationRow(item = item, onAction = onAction)
-            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+    if (notifications.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(NOTIFICATIONS_LIST_HEIGHT),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Outlined.NotificationsNone,
+                contentDescription = null,
+                tint = OliusSheetTextoSecundario,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(Modifier.height(10.dp))
+            Text("Sem notificações", color = OliusSheetTextoSecundario, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(NOTIFICATIONS_LIST_HEIGHT)
+                .verticalScroll(rememberScrollState())
+        ) {
+            notifications.forEach { item ->
+                NotificationRow(item = item, onAction = onAction)
+                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+            }
         }
     }
 }
@@ -1137,25 +1324,34 @@ private fun NotificationRow(item: NotificationItem, onAction: (NotificationItem)
     }
 }
 
-// ---------------------------------------------------------------------------
-// Formatação numérica — usa ponto decimal (não vírgula) de propósito, pra
-// bater visualmente com as referências ("625.9K", "50.3"), mesmo com o resto
-// do app em pt-BR. Ver HOME_SCREEN.md.
-// ---------------------------------------------------------------------------
-
-private fun formatNumber(value: Double): String =
+internal fun formatNumber(value: Double): String =
     if (value == value.toLong().toDouble()) value.toLong().toString()
     else String.format(Locale.US, "%.1f", value)
 
-private fun formatCompact(value: Double): String {
+internal fun formatCompact(value: Double): String {
     if (value < 1000) return formatNumber(value)
     return String.format(Locale.US, "%.1fK", value / 1000.0)
 }
 
-private fun formatThousands(value: Double): String = String.format(Locale.US, "%.3f", value)
+/** Número durante a contagem com o MESMO formato do valor final. */
+internal fun formatCounting(value: Double, target: Double, compact: Boolean): String {
+    val inThousands = compact && target >= 1000
+    val decimals = if (inThousands || target != Math.floor(target)) 1 else 0
+    val shown = if (inThousands) value / 1000.0 else value
+    return String.format(Locale.US, "%.${decimals}f", shown) + if (inThousands) "K" else ""
+}
+
+/** Formato brasileiro: 25000.0 → "25.000", 3.0375 → "3,04". */
+internal fun formatBr(value: Double, maxDecimals: Int): String =
+    NumberFormat.getNumberInstance(PT_BR_LOCALE).apply {
+        maximumFractionDigits = maxDecimals
+        minimumFractionDigits = 0
+    }.format(value)
+
+private val PT_BR_LOCALE: Locale = Locale.forLanguageTag("pt-BR")
 
 @Preview(showBackground = true, heightDp = 900)
 @Composable
 private fun HomeScreenPreview() {
-    HomeScreen()
+    HomeScreen(topBarState = OliusTopBarState())
 }
