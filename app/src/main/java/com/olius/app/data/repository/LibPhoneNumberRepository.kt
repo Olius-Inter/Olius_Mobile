@@ -10,7 +10,7 @@ import java.util.Locale
 /** [PhoneNumberRepository] sobre a libphonenumber (Google, Apache 2.0, offline, sem chave). */
 class LibPhoneNumberRepository(
     utilProvider: () -> PhoneNumberUtil,
-    private val displayLocale: Locale = Locale("pt", "BR")
+    private val displayLocale: Locale = Locale.forLanguageTag("pt-BR")
 ) : PhoneNumberRepository {
     private val util by lazy(utilProvider)
 
@@ -20,7 +20,7 @@ class LibPhoneNumberRepository(
             .map { iso ->
                 PhoneCountry(
                     isoCode = iso,
-                    name = Locale("", iso).getDisplayCountry(displayLocale).ifBlank { iso },
+                    name = Locale.Builder().setRegion(iso).build().getDisplayCountry(displayLocale).ifBlank { iso },
                     dialCode = util.getCountryCodeForRegion(iso)
                 )
             }

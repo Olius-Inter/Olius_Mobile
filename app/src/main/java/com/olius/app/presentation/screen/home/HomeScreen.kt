@@ -146,6 +146,8 @@ private val NOTIFICATIONS_LIST_HEIGHT = 440.dp
 
 private const val STAT_COUNT_DURATION_MS = 2000
 
+private const val SUSTAINABILITY_LEVEL_LABEL = "Nível de sustentabilidade"
+
 /** Tela Home. */
 @Composable
 fun HomeScreen(
@@ -647,7 +649,7 @@ private fun CitizenLevelCard(state: HomeUiState) {
             Image(painter = painterResource(R.drawable.ic_level_silver), contentDescription = "Selo do nível", modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Nível de sustentabilidade", fontSize = 11.sp, color = OliusTextoSecundario)
+                Text(SUSTAINABILITY_LEVEL_LABEL, fontSize = 11.sp, color = OliusTextoSecundario)
                 Text(
                     state.levelName ?: "lv. ${state.sustainabilityLevel}",
                     fontSize = 20.sp,
@@ -852,7 +854,7 @@ private fun SustainabilityLevelCard(state: HomeUiState, modifier: Modifier = Mod
         border = BorderStroke(1.dp, OliusCampoBorda)
     ) {
         Column(Modifier.padding(20.dp)) {
-            Text("Nível de sustentabilidade", fontSize = 13.sp, color = OliusTextoSecundario)
+            Text(SUSTAINABILITY_LEVEL_LABEL, fontSize = 13.sp, color = OliusTextoSecundario)
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -864,7 +866,7 @@ private fun SustainabilityLevelCard(state: HomeUiState, modifier: Modifier = Mod
                 ) {
                     Image(
                         painter = painterResource(R.drawable.level),
-                        contentDescription = "Nível de sustentabilidade",
+                        contentDescription = SUSTAINABILITY_LEVEL_LABEL,
                         modifier = Modifier.size(32.dp)
                     )
                 }

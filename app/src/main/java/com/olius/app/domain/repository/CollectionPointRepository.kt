@@ -47,6 +47,6 @@ interface CollectorRepository {
 }
 
 /** Aba "Dicas" da Home B2C. */
-interface TipsRepository {
+fun interface TipsRepository {
     suspend fun getTips(): Result<List<Tip>>
 }

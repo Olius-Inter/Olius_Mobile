@@ -731,6 +731,7 @@ private fun openDirections(context: Context, latitude: Double, longitude: Double
             context.startActivity(intent)
             return
         } catch (_: ActivityNotFoundException) {
+            // Este app de mapas não está instalado: tenta o próximo da lista.
         }
     }
     Toast.makeText(context, "Nenhum app de mapas encontrado", Toast.LENGTH_SHORT).show()

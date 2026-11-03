@@ -56,8 +56,11 @@ class KeystoreSecretCipher(private val alias: String = KEY_ALIAS) : SecretCipher
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         (keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
+        // Sem setUserAuthenticationRequired: o refresh token é lido ao abrir o app para renovar a sessão
+        // sozinho, sem pedir biometria/PIN. Exigir autenticação quebraria o login automático, e aparelhos
+        // sem tela de bloqueio nem conseguiriam gerar a chave. A chave não sai do Keystore do aparelho.
         generator.init(
-            KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT) // NOSONAR kotlin:S6288
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(KEY_BITS)
