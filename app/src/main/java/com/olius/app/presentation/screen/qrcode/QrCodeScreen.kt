@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -93,12 +94,23 @@ fun QrCodeScreen(onBack: () -> Unit, viewModel: QrCodeViewModel = viewModel()) {
                     val content = state.content
                     when {
                         state.isLoading -> CircularProgressIndicator(color = OliusAmarelo)
-                        content == null -> Text(
-                            "QR Code indisponível. Verifique sua conexão.",
-                            fontSize = 13.sp,
-                            color = StepGray,
-                            textAlign = TextAlign.Center
-                        )
+                        content == null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "QR Code indisponível. Verifique sua conexão.",
+                                fontSize = 13.sp,
+                                color = StepGray,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                "Tentar de novo",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = OliusTituloMarromClaro,
+                                modifier = Modifier
+                                    .clickable(onClick = viewModel::load)
+                                    .padding(8.dp)
+                            )
+                        }
                         else -> {
                             val bitmap = remember(content) { qrBitmap(content, OliusTituloMarromClaro.toArgb()) }
                             Image(bitmap = bitmap, contentDescription = "QR Code de identificação", modifier = Modifier.fillMaxSize())

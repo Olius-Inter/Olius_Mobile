@@ -5,11 +5,27 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class BuildQrCodeContentUseCaseTest {
-    private val build = BuildQrCodeContentUseCase()
+    private val build = BuildQrCodeContentUseCase("https://olius-frontend-forms-segundo.onrender.com/")
 
     @Test
-    fun `QR guarda o qrToken exato, sem URL em volta`() {
-        assertEquals("a1b2c3", build("a1b2c3"))
+    fun `QR leva ao Forms so com o qrToken`() {
+        assertEquals(
+            "https://olius-frontend-forms-segundo.onrender.com/?qrToken=Ab3_x-9Z",
+            build("Ab3_x-9Z")
+        )
+    }
+
+    @Test
+    fun `token com caractere especial vai codificado`() {
+        assertEquals(
+            "https://olius-frontend-forms-segundo.onrender.com/?qrToken=a%2Bb%26fluxo%3Dx",
+            build("a+b&fluxo=x")
+        )
+    }
+
+    @Test
+    fun `espacos em volta do token saem`() {
+        assertEquals("https://olius-frontend-forms-segundo.onrender.com/?qrToken=abc", build("  abc "))
     }
 
     @Test

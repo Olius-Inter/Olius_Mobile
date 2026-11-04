@@ -10,6 +10,9 @@ object ApiConfig {
     /** As rotas não começam com "/", então a base precisa terminar com ela. */
     fun withTrailingSlash(url: String): String = if (url.endsWith("/")) url else "$url/"
 
+    /** Forms que o PEV ou o motorista abre ao escanear o QR do usuário (`?qrToken=`). */
+    const val FORMS_BASE_URL = "https://olius-frontend-forms-segundo.onrender.com/"
+
     /** "Fale conosco" do Perfil abre o app de e-mail para este endereço (e-mail oficial do Olius). */
     const val SUPPORT_EMAIL = "oliusjef26@gmail.com"
 
